@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Vercel
+.vercel
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Debug
+npm-debug.log*
+
+# Large tools
+_tools/
+
+# Research / reference files
+new_repo/
+serch/
+_backup/
+참고자료/
+
+# Screenshots
+*.png
+
+# Playwright MCP logs
+.playwright-mcp/

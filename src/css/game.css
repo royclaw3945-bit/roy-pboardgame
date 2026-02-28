@@ -1,0 +1,272 @@
+/* ============================================
+   GAME - Board, Locations, Theater, Dice,
+   Characters, Tricks, Components, Stats
+   ============================================ */
+
+/* ---- Phase Banner ---- */
+.phase-banner {
+  text-align: center; padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(6, 182, 212, 0.06));
+  border-radius: var(--radius-lg); margin-bottom: 16px;
+  border: 1px solid var(--border); position: relative; overflow: hidden;
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.08);
+}
+.phase-banner::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(192, 132, 252, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+.phase-banner h2 { margin-bottom: 4px; font-family: var(--font-heading); position: relative; }
+.phase-banner p { color: var(--text-dim); font-size: 0.85rem; position: relative; }
+
+/* ---- Location Cards ---- */
+.locations-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.location-card {
+  background: var(--glass-bg); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 14px; cursor: pointer; transition: all 0.25s ease;
+  position: relative; overflow: hidden;
+  background-size: cover; background-position: center;
+}
+.location-card.has-bg { background-blend-mode: overlay; background-color: rgba(10, 10, 26, 0.78); }
+.location-card.has-bg:hover { background-color: rgba(10, 10, 26, 0.65); }
+.location-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--purple), var(--cyan));
+  opacity: 0; transition: opacity 0.25s;
+}
+.location-card:hover {
+  border-color: var(--purple); transform: translateY(-2px);
+  box-shadow: 0 0 16px var(--purple-glow), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.location-card:hover::before { opacity: 1; }
+.location-card.selected { border-color: var(--purple-light); box-shadow: 0 0 20px var(--purple-glow); }
+.location-card.selected::before { opacity: 1; }
+.location-card.disabled { opacity: 0.5; pointer-events: none; }
+.location-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.location-icon { font-size: 1.4rem; }
+.location-name { font-size: 0.95rem; font-weight: 700; font-family: var(--font-heading); color: var(--purple-light); }
+.location-actions { display: flex; flex-direction: column; gap: 4px; }
+
+/* ---- Action Buttons ---- */
+.action-btn {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); cursor: pointer;
+  font-size: 0.85rem; font-family: var(--font-body); transition: all 0.2s ease; margin-bottom: 4px;
+}
+.action-btn:hover {
+  border-color: var(--purple); background: rgba(124, 58, 237, 0.08);
+  color: var(--purple-light); box-shadow: 0 0 8px var(--purple-glow);
+}
+.action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.action-btn .ap-cost {
+  background: linear-gradient(135deg, var(--purple), #6d28d9); color: #fff;
+  padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; font-family: var(--font-heading);
+}
+
+/* ---- Player Stats ---- */
+.player-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat-box {
+  background: var(--bg-card); border-radius: var(--radius); padding: 8px 10px;
+  text-align: center; border: 1px solid var(--border); transition: all 0.2s;
+  position: relative; overflow: hidden;
+}
+.stat-box::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(124, 58, 237, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+.stat-box .value { font-size: 1.5rem; font-weight: 700; color: var(--purple-light); font-family: var(--font-heading); }
+.stat-box .label {
+  font-size: 0.7rem; color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center; gap: 2px; margin-top: 2px;
+}
+.stat-box.fame .value { color: var(--gold-primary); }
+.stat-box.coins .value { color: var(--gold-primary); }
+.stat-box.shards .value { color: var(--cyan-light); }
+
+/* ---- Character List ---- */
+.character-list { display: flex; flex-direction: column; gap: 6px; }
+.character-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-card); padding: 6px 10px; border-radius: var(--radius);
+  font-size: 0.85rem; border: 1px solid var(--border); transition: all 0.2s;
+}
+.character-item:hover { border-color: var(--border-light); }
+.character-item .char-icon { font-size: 1.1rem; margin-right: 6px; }
+.character-item .char-ap {
+  background: linear-gradient(135deg, var(--purple), #6d28d9); color: #fff;
+  padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; font-family: var(--font-heading);
+}
+.character-item.assigned { border-left: 3px solid var(--green); }
+
+/* ---- Trick List ---- */
+.trick-list { display: flex; flex-direction: column; gap: 8px; }
+.trick-item {
+  background: var(--bg-card); border-radius: var(--radius); padding: 10px;
+  border: 1px solid var(--border); transition: all 0.2s; position: relative; overflow: hidden;
+}
+.trick-item::after { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; }
+.trick-item.mechanical { border-left-color: var(--mechanical); }
+.trick-item.mechanical::after { background: var(--mechanical); }
+.trick-item.optical { border-left-color: var(--optical); }
+.trick-item.optical::after { background: var(--optical); }
+.trick-item.escape { border-left-color: var(--escape); }
+.trick-item.escape::after { background: var(--escape); }
+.trick-item.spiritual { border-left-color: var(--spiritual); }
+.trick-item.spiritual::after { background: var(--spiritual); }
+.trick-item .trick-name { font-weight: 600; font-size: 0.9rem; font-family: var(--font-heading); }
+.trick-item .trick-level { font-size: 0.75rem; color: var(--text-dim); }
+.trick-item .trick-markers { display: flex; gap: 4px; margin-top: 4px; }
+.trick-marker {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 1px solid var(--purple); background: var(--bg-secondary); transition: all 0.2s;
+}
+.trick-marker.filled { background: var(--purple-light); box-shadow: 0 0 4px var(--purple-glow); }
+.trick-item .trick-yields { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+
+/* ---- Components ---- */
+.component-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.component-item {
+  display: flex; align-items: center; gap: 4px; background: var(--bg-card);
+  padding: 4px 8px; border-radius: var(--radius); font-size: 0.8rem; border: 1px solid var(--border);
+}
+.component-item .count { font-weight: 700; color: var(--cyan-light); font-family: var(--font-heading); }
+
+/* ---- Dice Section ---- */
+.dice-section {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+  padding: 12px; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border);
+}
+.dice-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.dice-group-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-heading); }
+.dice-row { display: flex; gap: 6px; }
+.die {
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-secondary); border: 2px solid var(--border); border-radius: 6px;
+  font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; color: var(--text);
+}
+.die:hover { border-color: var(--purple); box-shadow: 0 0 8px var(--purple-glow); }
+.die.used { opacity: 0.25; border-style: dashed; cursor: default; }
+.die.selected { border-color: var(--purple-light); box-shadow: 0 0 12px var(--purple-glow); }
+
+/* ---- Theater Section ---- */
+.theater-section { margin-bottom: 20px; }
+.theater-section > h3 { margin-bottom: 8px; font-family: var(--font-heading); }
+.performance-cards-row { display: flex; gap: 12px; overflow-x: auto; padding: 8px 0; }
+.perf-card {
+  min-width: 200px; flex-shrink: 0; background: var(--glass-bg); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 12px; transition: all 0.25s ease; position: relative;
+}
+.perf-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--purple), var(--cyan));
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0; opacity: 0.6;
+}
+.perf-card:hover {
+  border-color: var(--cyan); transform: translateY(-2px);
+  box-shadow: 0 0 12px var(--cyan-glow), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.perf-card.selected { border-color: var(--cyan-light); box-shadow: 0 0 16px var(--cyan-glow); }
+.perf-card-title { text-align: center; font-size: 0.85rem; font-weight: 700; color: var(--cyan-light); margin-bottom: 8px; font-family: var(--font-heading); }
+.perf-card-bonus { text-align: center; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; }
+.perf-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* ---- Trick Slots ---- */
+.trick-slot {
+  width: 100%; aspect-ratio: 1; background: var(--bg-secondary);
+  border: 1px dashed var(--border); border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; cursor: pointer; transition: all 0.2s; position: relative;
+}
+.trick-slot:hover { border-color: var(--purple); border-style: solid; box-shadow: inset 0 0 8px rgba(124, 58, 237, 0.1); }
+.trick-slot.occupied { border-style: solid; background: rgba(124, 58, 237, 0.05); }
+.trick-slot .link-indicator {
+  position: absolute; top: -4px; right: -4px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--purple-light); font-size: 0.6rem; color: #000;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 0 4px var(--purple-glow);
+}
+.trick-slot .shard-indicator { position: absolute; bottom: 2px; right: 2px; font-size: 0.6rem; color: var(--cyan-light); }
+.trick-slot-info { font-size: 0.55rem; color: var(--text-dim); text-align: center; letter-spacing: 0.3px; }
+
+/* ---- Theater Weekdays ---- */
+.theater-weekdays { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.weekday-col { background: var(--bg-card); border-radius: var(--radius); padding: 8px; text-align: center; border: 1px solid var(--border); }
+.weekday-col h4 { font-size: 0.78rem; margin-bottom: 6px; font-family: var(--font-heading); }
+.weekday-slot {
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px; margin: 4px 0; font-size: 0.72rem; cursor: pointer; min-height: 32px;
+  display: flex; align-items: center; justify-content: center; transition: all 0.2s; color: var(--text-dim);
+}
+.weekday-slot:hover { border-color: var(--purple); }
+.weekday-slot.performance-slot { border-color: var(--purple); background: rgba(124, 58, 237, 0.05); }
+.weekday-slot.occupied { border-color: var(--green); color: var(--text); }
+
+/* ---- Market ---- */
+.market-display { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.market-item {
+  display: flex; align-items: center; gap: 4px; padding: 6px 12px;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+}
+.market-item:hover { border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
+.market-item.selected { border-color: var(--cyan-light); background: rgba(6, 182, 212, 0.08); }
+.market-item .price { color: var(--gold-primary); font-weight: 700; font-family: var(--font-heading); }
+
+/* ---- Turn Indicator ---- */
+.turn-indicator {
+  background: linear-gradient(135deg, var(--purple), #6d28d9); color: #fff;
+  padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;
+  display: inline-block; margin-bottom: 8px; font-family: var(--font-heading);
+  box-shadow: 0 0 8px var(--purple-glow);
+}
+
+/* ---- Assignment Overlay ---- */
+.assignment-overlay {
+  position: fixed; inset: 0; z-index: 800; background: rgba(5, 5, 15, 0.7);
+  backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center;
+}
+.assignment-panel {
+  background: var(--bg-panel); border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg); padding: 24px; max-width: 700px; width: 90%;
+  box-shadow: 0 0 30px var(--purple-glow), 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.assignment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+
+/* ---- Performance Results ---- */
+.performance-results h2 { text-align: center; margin-bottom: 12px; font-family: var(--font-heading); }
+.perf-results-list { max-height: 200px; overflow-y: auto; margin-bottom: 12px; }
+.perf-result-entry { padding: 6px 10px; font-size: 0.85rem; border-bottom: 1px solid var(--border); color: var(--text); }
+.perf-result-entry:nth-child(odd) { background: rgba(124, 58, 237, 0.03); }
+.standings { margin-top: 12px; }
+
+/* ---- Worker Slots ---- */
+.worker-slots {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;
+  padding: 6px; background: var(--bg-secondary); border-radius: var(--radius); border: 1px solid var(--border);
+}
+.worker-slot {
+  width: 38px; height: 38px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 1rem; transition: all 0.2s; position: relative;
+}
+.worker-slot .ws-ap {
+  font-size: 0.55rem; color: var(--text-dim); position: absolute; top: 1px; right: 2px;
+  font-family: var(--font-heading);
+}
+.worker-slot.occupied { background: rgba(124, 58, 237, 0.08); border-width: 2px; }
+.worker-slot.locked { opacity: 0.3; background: var(--bg-secondary); font-size: 0.7rem; }
+
+/* ---- Fame Track ---- */
+.fame-track {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 12px; margin-bottom: 16px;
+}
+.fame-track h4 { font-family: var(--font-heading); font-size: 0.85rem; margin-bottom: 8px; }
+.fame-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.fame-name { width: 70px; font-size: 0.78rem; font-weight: 600; font-family: var(--font-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fame-bar-bg { flex: 1; height: 10px; background: var(--bg-secondary); border-radius: 5px; overflow: hidden; border: 1px solid var(--border); }
+.fame-bar { height: 100%; border-radius: 5px; transition: width 0.5s ease; min-width: 2px; }
+.fame-val { width: 30px; text-align: right; font-size: 0.78rem; font-weight: 700; color: var(--gold-primary); font-family: var(--font-heading); }
