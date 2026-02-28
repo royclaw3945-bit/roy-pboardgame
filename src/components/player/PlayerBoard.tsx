@@ -3,7 +3,7 @@
 import { useGameStore } from '@/stores/game-store';
 import { useUIStore } from '@/stores/ui-store';
 import { getTrickDef } from '@/core/data/tricks';
-import { CHARACTER_META, COMPONENT_META } from '@/core/data/constants';
+import { CHARACTER_META, COMPONENT_META, LOCATION_META } from '@/core/data/constants';
 import type { ComponentType } from '@/core/types';
 
 const ALL_COMPS: ComponentType[] = [
@@ -44,7 +44,7 @@ export function PlayerBoard() {
                 ${c.placed ? 'bg-green-900/30' : c.assigned ? 'bg-yellow-900/30' : 'bg-[var(--bg-dark)]'}`}
             >
               {CHARACTER_META[c.type].name}
-              {c.location && <span className="ml-1 text-[var(--text-secondary)]">@{c.location}</span>}
+              {c.location && <span className="ml-1 text-[var(--text-secondary)]">@{LOCATION_META[c.location].name}</span>}
               {c.ap > 0 && <span className="ml-1 text-[var(--gold)]">AP:{c.ap}</span>}
             </div>
           ))}

@@ -18,7 +18,7 @@ import {
 import { shuffle } from './random';
 
 const LOCATIONS_WITH_SLOTS: readonly Location[] = [
-  'DOWNTOWN', 'MARKET_ROW', 'THEATER', 'DARK_ALLEY',
+  'DOWNTOWN', 'MARKET_ROW', 'WORKSHOP', 'THEATER', 'DARK_ALLEY',
 ];
 
 const ALL_COMPONENTS: readonly ComponentType[] = [
@@ -81,8 +81,7 @@ function createLocationSlots(numPlayers: number): Record<Location, readonly Loca
   for (const loc of LOCATIONS_WITH_SLOTS) {
     result[loc] = slotsTemplate.map(s => ({ ...s, occupant: null }));
   }
-  result.WORKSHOP = [];
-  result.MARKET_ROW = slotsTemplate.map(s => ({ ...s, occupant: null }));
+  // MARKET_ROW는 LOCATIONS_WITH_SLOTS에서 이미 생성됨 (중복 제거)
   return result;
 }
 
