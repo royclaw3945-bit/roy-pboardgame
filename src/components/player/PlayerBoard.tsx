@@ -28,9 +28,9 @@ export function PlayerBoard() {
 
       {/* Resources */}
       <div className="mb-2 flex gap-3 text-xs">
-        <span>Fame: <b>{player.fame}</b></span>
-        <span>Coins: <b>{player.coins}</b></span>
-        <span>Shards: <b>{player.shards}</b></span>
+        <span>명성: <b>{player.fame}</b></span>
+        <span>코인: <b>{player.coins}</b></span>
+        <span>샤드: <b>{player.shards}</b></span>
       </div>
 
       {/* Characters */}

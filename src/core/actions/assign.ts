@@ -114,11 +114,17 @@ registerHandler<SubmitAction>('SUBMIT_ASSIGNMENT', {
       action.playerId,
     ];
 
+    // 다음 미제출 플레이어로 전환
+    const nextAssigner = state.players.find(
+      p => !newSubmitted.includes(p.id),
+    )?.id ?? null;
+
     let s: GameState = {
       ...state,
       assignmentPhase: {
         ...state.assignmentPhase!,
         playersSubmitted: newSubmitted,
+        currentAssigner: nextAssigner,
       },
     };
     s = addLog(s, `${player.name}이(가) 배정 확정`);

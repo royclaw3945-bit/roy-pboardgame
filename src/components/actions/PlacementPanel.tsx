@@ -1,7 +1,7 @@
 'use client';
 
 import { useGameStore } from '@/stores/game-store';
-import { LOCATION_META } from '@/core/data/constants';
+import { LOCATION_META, CHARACTER_META } from '@/core/data/constants';
 
 export function PlacementPanel() {
   const state = useGameStore((s) => s.state);
@@ -33,7 +33,7 @@ export function PlacementPanel() {
       <h3 className="mb-2 text-sm font-bold">배치 페이즈</h3>
       <p className="mb-2 text-xs">
         <span className="font-bold" style={{ color: player.color }}>{player.name}</span>
-        {' '}의 {char.type} → {location && LOCATION_META[location]?.name}
+        {' '}의 {CHARACTER_META[char.type].name} → {location && LOCATION_META[location]?.name}
       </p>
 
       {!char.placed && location && slots.length > 0 && (

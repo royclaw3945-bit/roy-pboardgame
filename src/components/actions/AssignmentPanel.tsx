@@ -1,8 +1,8 @@
 'use client';
 
 import { useGameStore } from '@/stores/game-store';
-import { LOCATION_META } from '@/core/data/constants';
-import type { PlayerId, Location } from '@/core/types';
+import { LOCATION_META, CHARACTER_META } from '@/core/data/constants';
+import type { Location } from '@/core/types';
 
 const LOCATIONS: Location[] = ['DOWNTOWN', 'MARKET_ROW', 'WORKSHOP', 'THEATER', 'DARK_ALLEY'];
 
@@ -18,12 +18,23 @@ export function AssignmentPanel() {
     return (
       <div>
         <h3 className="mb-2 text-sm font-bold">배정 공개 완료</h3>
-        <p className="mb-2 text-xs text-[var(--text-secondary)]">
-          모든 플레이어의 배정이 공개되었습니다.
-        </p>
+        {state.players.map(p => (
+          <div key={p.id} className="mb-1 text-xs">
+            <span className="font-bold" style={{ color: p.color }}>{p.name}</span>
+            {p.currentPlacements.map(pl => {
+              const card = p.assignmentCards.find(c => c.id === pl.cardId);
+              return (
+                <span key={pl.cardId} className="ml-2 text-[var(--text-secondary)]">
+                  {card ? LOCATION_META[card.location].name : '?'}
+                  ({pl.characterIndices.map(i => CHARACTER_META[p.characters[i]?.type]?.name ?? '?').join(', ')})
+                </span>
+              );
+            })}
+          </div>
+        ))}
         <button
           onClick={finishAssignment}
-          className="rounded bg-[var(--green)] px-4 py-2 text-sm font-bold hover:bg-green-700"
+          className="mt-2 rounded bg-[var(--green)] px-4 py-2 text-sm font-bold hover:bg-green-700"
         >
           배치 페이즈로 →
         </button>
@@ -38,6 +49,9 @@ export function AssignmentPanel() {
   const isSubmitted = submitted.includes(player.id);
   const allSubmitted = submitted.length >= state.players.length;
 
+  // 위치별로 카드 그룹핑 (중복 위치는 첫 번째 미사용 카드만 표시)
+  const usedCardIds = new Set(player.currentPlacements.map(p => p.cardId));
+
   return (
     <div>
       <h3 className="mb-2 text-sm font-bold">배정 페이즈 (비밀 배치)</h3>
@@ -49,50 +63,62 @@ export function AssignmentPanel() {
 
       {!isSubmitted && (
         <div className="mb-3">
-          {/* Show available assignment cards */}
-          {player.assignmentCards
-            .filter(card =>
-              card.location !== 'DARK_ALLEY' || state.config.useDarkAlley,
-            )
-            .map((card) => {
-              const placed = player.currentPlacements.find(p => p.cardId === card.id);
-              return (
-                <div key={card.id} className="mb-1 flex items-center gap-2 text-xs">
-                  <span className={placed ? 'text-green-400' : 'text-[var(--text-secondary)]'}>
-                    {LOCATION_META[card.location].name}
+          {/* 위치별로 표시 */}
+          {LOCATIONS.filter(loc =>
+            loc !== 'DARK_ALLEY' || state.config.useDarkAlley,
+          ).map(loc => {
+            const cardsForLoc = player.assignmentCards.filter(c => c.location === loc);
+            if (cardsForLoc.length === 0) return null;
+
+            // 이 위치에 배치된 카드 찾기
+            const placedCard = cardsForLoc.find(c => usedCardIds.has(c.id));
+            const placement = placedCard
+              ? player.currentPlacements.find(p => p.cardId === placedCard.id)
+              : null;
+
+            // 미사용 카드 중 첫 번째
+            const availableCard = cardsForLoc.find(c => !usedCardIds.has(c.id));
+
+            return (
+              <div key={loc} className="mb-1 flex items-center gap-2 text-xs">
+                <span className={`w-16 ${placement ? 'text-green-400' : 'text-[var(--text-secondary)]'}`}>
+                  {LOCATION_META[loc].name}
+                </span>
+                {placement ? (
+                  <span className="text-green-400">
+                    → {placement.characterIndices.map(i =>
+                      CHARACTER_META[player.characters[i]?.type]?.name ?? '?',
+                    ).join(', ')}
                   </span>
-                  {placed ? (
-                    <span className="text-green-400">
-                      (캐릭터: {placed.characterIndices.map(i => player.characters[i]?.type).join(', ')})
-                    </span>
-                  ) : (
-                    <div className="flex gap-1">
-                      {player.characters.map((char, charIdx) => {
-                        if (char.assigned) return null;
-                        const alreadyPlaced = player.currentPlacements.some(
-                          p => p.characterIndices.includes(charIdx),
-                        );
-                        if (alreadyPlaced) return null;
-                        return (
-                          <button
-                            key={charIdx}
-                            onClick={() => dispatchAction({
-                              type: 'PLACE_ASSIGNMENT_CARD',
-                              playerId: player.id,
-                              cardId: card.id,
-                              characterIndices: [charIdx],
-                            })}
-                            className="rounded bg-[var(--bg-dark)] px-2 py-0.5 text-[10px] hover:bg-[var(--bg-panel)]"
-                          >
-                            {char.type}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                ) : availableCard ? (
+                  <div className="flex gap-1">
+                    {player.characters.map((char, charIdx) => {
+                      const alreadyPlaced = player.currentPlacements.some(
+                        p => p.characterIndices.includes(charIdx),
+                      );
+                      if (alreadyPlaced) return null;
+                      return (
+                        <button
+                          key={charIdx}
+                          onClick={() => dispatchAction({
+                            type: 'PLACE_ASSIGNMENT_CARD',
+                            playerId: player.id,
+                            cardId: availableCard.id,
+                            characterIndices: [charIdx],
+                          })}
+                          className="rounded bg-[var(--bg-dark)] px-2 py-0.5 text-[10px] hover:bg-[var(--bg-panel)]"
+                        >
+                          {CHARACTER_META[char.type].name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <span className="text-[var(--text-secondary)] text-[10px]">카드 없음</span>
+                )}
+              </div>
+            );
+          })}
 
           {player.currentPlacements.length > 0 && (
             <button
