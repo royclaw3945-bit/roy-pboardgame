@@ -4,26 +4,38 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/stores/game-store';
 import { MAGICIANS } from '@/core/data/magicians';
-import type { MagicianId, PlayerConfig } from '@/core/types';
+import type { MagicianId, SpecialistType, ComponentType, PlayerConfig } from '@/core/types';
 
 const MAGICIAN_LIST = [...MAGICIANS.values()];
+const SPECIALIST_OPTIONS: { id: SpecialistType; label: string }[] = [
+  { id: 'ENGINEER', label: '기술자' },
+  { id: 'MANAGER', label: '매니저' },
+  { id: 'ASSISTANT', label: '어시스턴트' },
+];
+
+/** Default starting components by specialist (coin value 2 each) */
+const DEFAULT_COMPONENTS: Record<SpecialistType, readonly ComponentType[]> = {
+  ENGINEER: ['METAL', 'METAL'],
+  MANAGER: ['FABRIC', 'FABRIC'],
+  ASSISTANT: ['WOOD', 'WOOD'],
+};
 
 interface PlayerSetup {
   name: string;
   magicianId: MagicianId;
   isHuman: boolean;
+  startingSpecialist: SpecialistType;
 }
 
 export default function SetupPage() {
   const router = useRouter();
   const newGame = useGameStore((s) => s.newGame);
   const [numPlayers, setNumPlayers] = useState(2);
-  const [useDarkAlley, setUseDarkAlley] = useState(true);
   const [players, setPlayers] = useState<PlayerSetup[]>([
-    { name: 'Player 1', magicianId: 'MECHANIKER', isHuman: true },
-    { name: 'Player 2', magicianId: 'OPTICIAN', isHuman: false },
-    { name: 'Player 3', magicianId: 'ESCAPIST', isHuman: false },
-    { name: 'Player 4', magicianId: 'SPIRITUALIST', isHuman: false },
+    { name: 'Player 1', magicianId: 'MECHANIKER', isHuman: true, startingSpecialist: 'ENGINEER' },
+    { name: 'Player 2', magicianId: 'OPTICIAN', isHuman: false, startingSpecialist: 'MANAGER' },
+    { name: 'Player 3', magicianId: 'ESCAPIST', isHuman: false, startingSpecialist: 'ASSISTANT' },
+    { name: 'Player 4', magicianId: 'SPIRITUALIST', isHuman: false, startingSpecialist: 'ENGINEER' },
   ]);
 
   const usedMagicians = players.slice(0, numPlayers).map((p) => p.magicianId);
@@ -41,9 +53,11 @@ export default function SetupPage() {
         name: p.name,
         magicianId: p.magicianId,
         isHuman: p.isHuman,
+        startingSpecialist: p.startingSpecialist,
+        startingComponents: DEFAULT_COMPONENTS[p.startingSpecialist],
       }));
     const seed = Math.floor(Math.random() * 1000000);
-    newGame(configs, { useDarkAlley, seed });
+    newGame(configs, { seed });
     router.push('/game');
   }
 
@@ -67,15 +81,6 @@ export default function SetupPage() {
           </button>
         ))}
       </div>
-
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={useDarkAlley}
-          onChange={(e) => setUseDarkAlley(e.target.checked)}
-        />
-        <span>Dark Alley 확장 (7라운드)</span>
-      </label>
 
       <div className="flex flex-col gap-4">
         {players.slice(0, numPlayers).map((p, idx) => (
@@ -105,6 +110,19 @@ export default function SetupPage() {
                   }
                 >
                   {m.nameKo}
+                </option>
+              ))}
+            </select>
+            <select
+              value={p.startingSpecialist}
+              onChange={(e) =>
+                updatePlayer(idx, { startingSpecialist: e.target.value as SpecialistType })
+              }
+              className="rounded bg-[var(--bg-dark)] px-3 py-2 text-white"
+            >
+              {SPECIALIST_OPTIONS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
                 </option>
               ))}
             </select>

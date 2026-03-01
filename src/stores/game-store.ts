@@ -18,7 +18,7 @@ interface GameStore {
   lastResult: ActionResult | null;
 
   // Actions
-  newGame: (configs: readonly PlayerConfig[], options?: { useDarkAlley?: boolean; seed?: number }) => void;
+  newGame: (configs: readonly PlayerConfig[], options?: { seed?: number }) => void;
   dispatch: (action: GameAction) => DispatchResult | null;
   runSetup: () => void;
   finishAdvertise: () => void;

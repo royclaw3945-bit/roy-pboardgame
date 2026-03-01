@@ -27,7 +27,7 @@ export const MAGICIANS: ReadonlyMap<MagicianId, MagicianDef> = new Map([
     img: '/img/mechaniker_portrait.jpg',
     isExpansion: false,
     daAbility: 'MECHANIKER_DA',
-    daAbilityDesc: '기계 트릭 준비 시 마커 +1',
+    daAbilityDesc: '턴 1회: 견습생 1명에게 극장 외 장소에서 AP +1',
   }],
   ['OPTICIAN', {
     id: 'OPTICIAN',
@@ -39,7 +39,7 @@ export const MAGICIANS: ReadonlyMap<MagicianId, MagicianDef> = new Map([
     img: '/img/optico_portrait.jpg',
     isExpansion: false,
     daAbility: 'OPTICIAN_DA',
-    daAbilityDesc: '광학 트릭 셋업 시 추가 명성 +1',
+    daAbilityDesc: '턴 1회: 자기 영구 배치카드에 상대 공개 특수 배치카드 효과 복사',
   }],
   ['ESCAPIST', {
     id: 'ESCAPIST',
@@ -51,7 +51,7 @@ export const MAGICIANS: ReadonlyMap<MagicianId, MagicianDef> = new Map([
     img: '/img/chains_portrait.jpg',
     isExpansion: false,
     daAbility: 'ESCAPIST_DA',
-    daAbilityDesc: '탈출 트릭 학습 비용 -1 명성',
+    daAbilityDesc: 'Performance 전 무료 Reschedule 1회 (링크보너스 받음)',
   }],
   ['SPIRITUALIST', {
     id: 'SPIRITUALIST',
@@ -63,7 +63,7 @@ export const MAGICIANS: ReadonlyMap<MagicianId, MagicianDef> = new Map([
     img: '/img/priestess_portrait.jpg',
     isExpansion: false,
     daAbility: 'SPIRITUALIST_DA',
-    daAbilityDesc: '영혼 트릭 공연 시 추가 코인 +2',
+    daAbilityDesc: 'DA AP 1: Active 예언 교체 (Pending 예언 선택, 새 예언 뽑기)',
   }],
   // -- Dark Alley Expansion --
   ['ELECTRA', {
@@ -76,7 +76,7 @@ export const MAGICIANS: ReadonlyMap<MagicianId, MagicianDef> = new Map([
     img: '/img/electra_portrait.jpg',
     isExpansion: true,
     daAbility: 'ELECTRA_DA',
-    daAbilityDesc: '다운타운 행동 시 AP +1 (1턴 1회)',
+    daAbilityDesc: 'Set Up 시 같은 트릭 마커 2개를 한 슬롯에 쌓기 가능',
   }],
   ['GENTLEMAN', {
     id: 'GENTLEMAN',
@@ -88,7 +88,7 @@ export const MAGICIANS: ReadonlyMap<MagicianId, MagicianDef> = new Map([
     img: '/img/gentleman_portrait.jpg',
     isExpansion: true,
     daAbility: 'GENTLEMAN_DA',
-    daAbilityDesc: '시장 구매 시 1코인 할인 (1턴 1회)',
+    daAbilityDesc: '마법사 다운타운/시장/DA 배치 시 보유 트릭 수만큼 명성',
   }],
   ['RED_LOTUS', {
     id: 'RED_LOTUS',
@@ -100,7 +100,7 @@ export const MAGICIANS: ReadonlyMap<MagicianId, MagicianDef> = new Map([
     img: '/img/red_lotus_portrait.jpg',
     isExpansion: true,
     daAbility: 'RED_LOTUS_DA',
-    daAbilityDesc: '작업장 행동 시 추가 준비 1회 (1턴 1회)',
+    daAbilityDesc: '퍼포머일 때 상대 트릭 수익을 자기 것 대신 받기 가능',
   }],
   ['YORUBA', {
     id: 'YORUBA',
@@ -112,7 +112,7 @@ export const MAGICIANS: ReadonlyMap<MagicianId, MagicianDef> = new Map([
     img: '/img/yoruba_portrait.jpg',
     isExpansion: true,
     daAbility: 'YORUBA_DA',
-    daAbilityDesc: '극장 셋업 시 인접 슬롯 무시 (1턴 1회)',
+    daAbilityDesc: '턴 1회: 샤드 1개로 상대 퍼포먼스 카드 대신 선택',
   }],
 ]);
 

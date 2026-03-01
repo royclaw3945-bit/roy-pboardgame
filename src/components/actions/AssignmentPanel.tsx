@@ -64,9 +64,7 @@ export function AssignmentPanel() {
       {!isSubmitted && (
         <div className="mb-3">
           {/* 위치별로 표시 */}
-          {LOCATIONS.filter(loc =>
-            loc !== 'DARK_ALLEY' || state.config.useDarkAlley,
-          ).map(loc => {
+          {LOCATIONS.map(loc => {
             const cardsForLoc = player.assignmentCards.filter(c => c.location === loc);
             if (cardsForLoc.length === 0) return null;
 

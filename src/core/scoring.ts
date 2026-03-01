@@ -1,10 +1,10 @@
-// End-game scoring — final score calculation
+// End-game scoring — final score calculation (v4: DA only)
 
 import type { GameState, PlayerState, PlayerId, ComponentType } from './types';
 import { getTrickDef } from './data/tricks';
 import { adjustFame, addLog } from './state/helpers';
-import { countTotalMarkersOnBoard } from './state/selectors';
-import { END_SCORING, COMPONENT_META } from './data/constants';
+import { countTotalMarkersOnTricks, countSpecialCards } from './state/selectors';
+import { END_SCORING } from './data/constants';
 
 interface ScoreBreakdown {
   readonly playerId: PlayerId;
@@ -12,7 +12,7 @@ interface ScoreBreakdown {
   readonly baseFame: number;
   readonly shardBonus: number;
   readonly coinBonus: number;
-  readonly characterBonus: number;
+  readonly specialCardBonus: number;
   readonly trickEndBonus: number;
   readonly totalFame: number;
 }
@@ -21,76 +21,89 @@ const BASIC_COMPS: readonly ComponentType[] = ['WOOD', 'METAL', 'GLASS', 'FABRIC
 const ADVANCED_COMPS: readonly ComponentType[] = ['ROPE', 'OIL', 'SAW', 'ANIMAL'];
 const SUPERIOR_COMPS: readonly ComponentType[] = ['LOCK', 'MIRROR', 'DISGUISE', 'GEAR'];
 
-function calcTrickEndBonus(player: PlayerState, state: GameState): number {
+/** Cap bonus to FAME_CAP (20) per category */
+function cap(value: number): number {
+  return Math.min(value, END_SCORING.FAME_CAP);
+}
+
+function calcTrickEndBonus(player: PlayerState, _state: GameState): number {
   let bonus = 0;
   for (const slot of player.tricks) {
     const trick = getTrickDef(slot.trickId);
     if (!trick.endBonus) continue;
     const eb = trick.endBonus;
+    let catBonus = 0;
     switch (eb.type) {
-      case 'TRICK_MARKERS_ON_PERF':
-        bonus += countTotalMarkersOnBoard(state, player.id) * (eb.famePerUnit ?? 0);
+      case 'TRICK_MARKERS_ON_TRICK':
+        // v4: sum of markersOnTrick across all trick cards
+        catBonus = countTotalMarkersOnTricks(player) * (eb.famePerUnit ?? 0);
         break;
       case 'PER_SHARD':
-        bonus += player.shards * (eb.famePerUnit ?? 0);
+        catBonus = player.shards * (eb.famePerUnit ?? 0);
         break;
       case 'PER_L1_TRICK':
-        bonus += player.tricks.filter(t => getTrickDef(t.trickId).level === 1).length * (eb.famePerUnit ?? 0);
+        catBonus = player.tricks.filter(t => getTrickDef(t.trickId).level === 1).length * (eb.famePerUnit ?? 0);
         break;
       case 'PER_L2_TRICK':
-        bonus += player.tricks.filter(t => getTrickDef(t.trickId).level === 2).length * (eb.famePerUnit ?? 0);
+        catBonus = player.tricks.filter(t => getTrickDef(t.trickId).level === 2).length * (eb.famePerUnit ?? 0);
         break;
       case 'PER_L3_TRICK':
-        bonus += player.tricks.filter(t => getTrickDef(t.trickId).level === 3).length * (eb.famePerUnit ?? 0);
+        catBonus = player.tricks.filter(t => getTrickDef(t.trickId).level === 3).length * (eb.famePerUnit ?? 0);
         break;
       case 'PER_APPRENTICE':
-        bonus += player.characters.filter(c => c.type === 'APPRENTICE').length * (eb.famePerUnit ?? 0);
+        catBonus = player.characters.filter(c => c.type === 'APPRENTICE').length * (eb.famePerUnit ?? 0);
         break;
       case 'PER_3_COINS':
-        bonus += Math.floor(player.coins / 3) * (eb.famePerUnit ?? 0);
+        catBonus = Math.floor(player.coins / 3) * (eb.famePerUnit ?? 0);
         break;
       case 'PER_BASIC_COMP':
-        bonus += BASIC_COMPS.filter(c => player.components[c] > 0).length * (eb.famePerUnit ?? 0);
+        // v4: total count of basic components (not number of types)
+        catBonus = BASIC_COMPS.reduce((sum, c) => sum + player.components[c], 0) * (eb.famePerUnit ?? 0);
         break;
       case 'PER_ADVANCED_COMP':
-        bonus += ADVANCED_COMPS.filter(c => player.components[c] > 0).length * (eb.famePerUnit ?? 0);
+        // v4: total count
+        catBonus = ADVANCED_COMPS.reduce((sum, c) => sum + player.components[c], 0) * (eb.famePerUnit ?? 0);
         break;
       case 'PER_SUPERIOR_COMP':
-        bonus += SUPERIOR_COMPS.filter(c => player.components[c] > 0).length * (eb.famePerUnit ?? 0);
+        // v4: total count
+        catBonus = SUPERIOR_COMPS.reduce((sum, c) => sum + player.components[c], 0) * (eb.famePerUnit ?? 0);
         break;
       case 'ALL_SPECIALISTS': {
         const types = new Set(player.specialists);
         if (types.has('ENGINEER') && types.has('MANAGER') && types.has('ASSISTANT')) {
-          bonus += eb.fame ?? 0;
+          catBonus = eb.fame ?? 0;
         }
         break;
       }
       case 'FOUR_TRICKS':
-        if (player.tricks.length >= 4) bonus += eb.fame ?? 0;
+        if (player.tricks.length >= 4) catBonus = eb.fame ?? 0;
         break;
       case 'HAS_ENGINEER':
-        if (player.specialists.includes('ENGINEER')) bonus += eb.fame ?? 0;
+        if (player.specialists.includes('ENGINEER')) catBonus = eb.fame ?? 0;
         break;
       case 'HAS_MANAGER':
-        if (player.specialists.includes('MANAGER')) bonus += eb.fame ?? 0;
+        if (player.specialists.includes('MANAGER')) catBonus = eb.fame ?? 0;
         break;
       case 'HAS_ASSISTANT':
-        if (player.specialists.includes('ASSISTANT')) bonus += eb.fame ?? 0;
+        if (player.specialists.includes('ASSISTANT')) catBonus = eb.fame ?? 0;
+        break;
+      case 'PER_SPECIAL_CARD':
+        // v4: Hellhound — fame per unused special card
+        catBonus = countSpecialCards(player) * (eb.famePerUnit ?? 0);
         break;
     }
+    // v4: cap each end-bonus category at 20 fame
+    bonus += cap(catBonus);
   }
   return bonus;
 }
 
 export function calculateScores(state: GameState): readonly ScoreBreakdown[] {
   return state.players.map(player => {
-    const shardBonus = player.shards * END_SCORING.SHARD_TO_FAME;
-    const coinBonus = Math.floor(player.coins / END_SCORING.COINS_PER_FAME);
-    const apprenticeCount = player.characters.filter(c => c.type === 'APPRENTICE').length;
-    const specialistCount = player.specialists.length;
-    const characterBonus =
-      apprenticeCount * END_SCORING.APPRENTICE_FAME +
-      specialistCount * END_SCORING.SPECIALIST_FAME;
+    const shardBonus = cap(player.shards * END_SCORING.SHARD_TO_FAME);
+    const coinBonus = cap(Math.floor(player.coins / END_SCORING.COINS_PER_FAME));
+    // v4: special card bonus (2F per unused special card)
+    const specialCardBonus = cap(countSpecialCards(player) * END_SCORING.SPECIAL_CARD_FAME);
     const trickEndBonus = calcTrickEndBonus(player, state);
 
     return {
@@ -99,9 +112,9 @@ export function calculateScores(state: GameState): readonly ScoreBreakdown[] {
       baseFame: player.fame,
       shardBonus,
       coinBonus,
-      characterBonus,
+      specialCardBonus,
       trickEndBonus,
-      totalFame: player.fame + shardBonus + coinBonus + characterBonus + trickEndBonus,
+      totalFame: player.fame + shardBonus + coinBonus + specialCardBonus + trickEndBonus,
     };
   });
 }
@@ -115,7 +128,7 @@ export function applyFinalScoring(state: GameState): GameState {
     if (delta > 0) {
       s = adjustFame(s, score.playerId, delta);
     }
-    s = addLog(s, `${score.name} 최종점수: ${score.totalFame} (기본: ${score.baseFame}, 샤드: +${score.shardBonus}, 코인: +${score.coinBonus}, 캐릭터: +${score.characterBonus}, 트릭: +${score.trickEndBonus})`);
+    s = addLog(s, `${score.name} 최종점수: ${score.totalFame} (기본: ${score.baseFame}, 샤드: +${score.shardBonus}, 코인: +${score.coinBonus}, 특수카드: +${score.specialCardBonus}, 트릭: +${score.trickEndBonus})`);
   }
 
   // Determine winner

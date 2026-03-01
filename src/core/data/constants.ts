@@ -67,12 +67,13 @@ export const LOCATION_META: Readonly<Record<Location, {
   DARK_ALLEY: { name: '어둠의 골목', img: '/img/loc_darkalley.jpg' },
 };
 
-// -- Location Slot Pyramid (per player count) --
-export const LOCATION_SLOT_PYRAMID = [
-  { row: 1, apMod: 1 },
-  { row: 2, apMod: 0 }, { row: 2, apMod: 0 },
-  { row: 3, apMod: -1 }, { row: 3, apMod: -1 }, { row: 3, apMod: -1 },
+// -- Location Slots (DA: fixed 4 slots per location, except Theater) --
+export const LOCATION_SLOTS = [
+  { apMod: 2 }, { apMod: 1 }, { apMod: 1 }, { apMod: 0 },
 ] as const;
+
+// Slots blocked by player count: 2p→block 2 (+1 AP slots), 3p→block 1, 4p→0
+export const SLOT_BLOCKS: Readonly<Record<number, number>> = { 2: 2, 3: 1, 4: 0 };
 
 // -- Downtown Dice Faces --
 export const DICE_FACES = {
@@ -112,7 +113,7 @@ export const CHARACTER_META: Readonly<Record<CharacterType, {
 
 // -- Starting Setup --
 export const STARTING = {
-  fame: 10,
+  fame: 5,
   coins: 10,
   shards: 1,
   extraCoinsByPosition: [0, 2, 4, 6] as readonly number[],
@@ -132,8 +133,7 @@ export const WAGES = {
   UNPAID_PENALTY: 2,
 } as const;
 
-// -- Game Rounds --
-export const BASE_ROUNDS = 5;
+// -- Game Rounds (DA only) --
 export const DA_ROUNDS = 7;
 
 // -- Hire Limits --
@@ -144,8 +144,8 @@ export const HIRE_LIMITS = {
 // -- Specialist Theater Bonus --
 export const SPECIALIST_THEATER_BONUS = {
   ENGINEER:  { fame: 0, coins: 0, shards: 1 },
-  MANAGER:   { fame: 0, coins: 2, shards: 0 },
-  ASSISTANT: { fame: 1, coins: 0, shards: 0 },
+  MANAGER:   { fame: 0, coins: 3, shards: 0 },
+  ASSISTANT: { fame: 2, coins: 0, shards: 0 },
 } as const;
 
 // -- Venue Metadata --
@@ -159,20 +159,17 @@ export const VENUE_META: Readonly<Record<Venue, {
   MAGNUS_PANTHEON: { name: 'Magnus Pantheon',     nameKo: '마그누스 판테온', color: '#e74c3c' },
 };
 
-// -- End Game Scoring --
+// -- End Game Scoring (DA) --
 export const END_SCORING = {
   SHARD_TO_FAME: 1,
   COINS_PER_FAME: 3,
-  APPRENTICE_FAME: 2,
-  SPECIALIST_FAME: 3,
+  SPECIAL_CARD_FAME: 2,
+  FAME_CAP: 20,
 } as const;
 
-// -- Link Reward Thresholds --
-export const LINK_REWARDS = [
-  { fameThreshold: 1,  amount: 1 },
-  { fameThreshold: 16, amount: 2 },
-  { fameThreshold: 36, amount: 3 },
-] as const;
+// -- Link Reward by Trick Level --
+export const LINK_REWARD_BY_LEVEL: Readonly<Record<number, number>> = { 1: 1, 2: 2, 3: 3 };
+export const PERFORMER_LINK_BONUS = 1; // fixed 1 fame per link during performance
 
 // -- Performance Card Config --
 export const MAX_ACTIVE_PERF_CARDS = 5;

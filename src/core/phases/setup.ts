@@ -1,4 +1,4 @@
-// Setup phase — roll dice + determine initiative (v3)
+// Setup phase — roll dice + determine initiative (v4: DA only)
 
 import type { GameState, Weekday } from '../types';
 import type { DahlgaardFace, InnFace, BankFace } from '../types';
@@ -8,20 +8,21 @@ import { DICE_FACES, WEEKDAYS } from '../data/constants';
 
 function rollAllDice(state: GameState): GameState {
   let s = state;
+  // v4: 2 dice per group (6 total)
   const dahlgaard: DahlgaardFace[] = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 2; i++) {
     const { value, state: ns } = rngRollDie(s, DICE_FACES.DAHLGAARD);
     dahlgaard.push(value);
     s = ns;
   }
   const inn: InnFace[] = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 2; i++) {
     const { value, state: ns } = rngRollDie(s, DICE_FACES.INN);
     inn.push(value);
     s = ns;
   }
   const bank: BankFace[] = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 2; i++) {
     const { value, state: ns } = rngRollDie(s, DICE_FACES.BANK);
     bank.push(value);
     s = ns;
@@ -31,9 +32,9 @@ function rollAllDice(state: GameState): GameState {
     downtownDice: {
       DAHLGAARD: dahlgaard, INN: inn, BANK: bank,
       marked: {
-        DAHLGAARD: [false, false, false, false, false, false],
-        INN: [false, false, false, false, false, false],
-        BANK: [false, false, false, false, false, false],
+        DAHLGAARD: [false, false],
+        INN: [false, false],
+        BANK: [false, false],
       },
     },
   };
@@ -46,14 +47,21 @@ function determineInitiative(state: GameState): GameState {
     );
     return { ...ns, initiativeOrder: order as readonly number[] };
   }
+  // v4: sort by fame asc, ties → reverse existing order
+  const prevOrder = state.initiativeOrder;
   const sorted = [...state.players]
-    .sort((a, b) => a.fame - b.fame)
+    .sort((a, b) => {
+      if (a.fame !== b.fame) return a.fame - b.fame;
+      // Tie: reverse existing initiative order
+      const aIdx = prevOrder.indexOf(state.players.indexOf(a));
+      const bIdx = prevOrder.indexOf(state.players.indexOf(b));
+      return bIdx - aIdx; // reverse
+    })
     .map(p => state.players.indexOf(p));
   return { ...state, initiativeOrder: sorted };
 }
 
 function resetPlayerRoundState(state: GameState): GameState {
-  // v3: Reset weekdayPerformers
   const weekdayPerformers = {} as Record<Weekday, null>;
   for (const day of WEEKDAYS) weekdayPerformers[day] = null;
 

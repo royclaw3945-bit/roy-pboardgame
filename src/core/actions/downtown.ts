@@ -1,18 +1,20 @@
-// Downtown actions: LEARN_TRICK, TAKE_COINS, HIRE, REROLL, CHOOSE_DIE (v3)
+// Downtown actions: LEARN_TRICK, TAKE_COINS, HIRE, REROLL, SET_DIE, CHOOSE_DIE (v4)
 
 import type { GameState, GameAction, ValidationError, SymbolIndex } from '../types';
 import { err } from '../types';
 import { registerHandler } from './registry';
 import { getPlayer, getAllowedCategories, getNextAvailableSymbol } from '../state/selectors';
-import { updatePlayer, updateSymbol, addLog } from '../state/helpers';
+import { updatePlayer, updateSymbol, adjustFame, addLog } from '../state/helpers';
 import { rngRollDie } from '../state/random';
 import { getTrickDef } from '../data/tricks';
+import { getMagicianDef } from '../data/magicians';
 import { DICE_FACES, STARTING, HIRE_LIMITS } from '../data/constants';
 
 type LearnAction = Extract<GameAction, { type: 'LEARN_TRICK' }>;
 type TakeCoinsAction = Extract<GameAction, { type: 'TAKE_COINS' }>;
 type HireAction = Extract<GameAction, { type: 'HIRE' }>;
 type RerollAction = Extract<GameAction, { type: 'REROLL' }>;
+type SetDieAction = Extract<GameAction, { type: 'SET_DIE' }>;
 type ChooseDieAction = Extract<GameAction, { type: 'CHOOSE_DIE' }>;
 
 registerHandler<LearnAction>('LEARN_TRICK', {
@@ -23,19 +25,30 @@ registerHandler<LearnAction>('LEARN_TRICK', {
     if (player.tricks.length >= STARTING.maxTricks) {
       errors.push(err('tricks', '트릭 최대 보유 한도 초과'));
     }
-    // v3: symbolIndex 검증
     const sym = player.symbols[action.symbolIndex];
     if (!sym) { errors.push(err('symbolIndex', '심볼 인덱스 오류')); return errors; }
     if (sym.assigned) errors.push(err('symbol', '이미 사용된 심볼 마커'));
 
     const trick = getTrickDef(action.trickId);
+
+    // v4: 명성 부족분은 코인으로 대납 가능 (validate에서 완화)
+    // 코인 대납: 부족분 1명성 = 1코인
     if (player.fame < trick.fameThreshold) {
-      errors.push(err('fame', `명성 부족 (필요: ${trick.fameThreshold})`));
+      const deficit = trick.fameThreshold - player.fame;
+      if (player.coins < deficit) {
+        errors.push(err('fame', `명성 부족 (필요: ${trick.fameThreshold}, 코인 대납 불가)`));
+      }
     }
-    const allowed = getAllowedCategories(state);
-    if (!allowed.includes(trick.category)) {
-      errors.push(err('category', '해당 카테고리의 주사위가 없습니다'));
+
+    // v4: 선호 카테고리는 주사위 무관하게 학습 가능
+    const magician = getMagicianDef(player.magicianId);
+    if (trick.category !== magician.favoriteCategory) {
+      const allowed = getAllowedCategories(state);
+      if (!allowed.includes(trick.category)) {
+        errors.push(err('category', '해당 카테고리의 주사위가 없습니다'));
+      }
     }
+
     const deck = state.trickDecks[trick.category];
     if (!deck.includes(action.trickId)) {
       errors.push(err('trickId', '해당 트릭이 덱에 없습니다'));
@@ -48,13 +61,42 @@ registerHandler<LearnAction>('LEARN_TRICK', {
   apply(state, action) {
     const player = getPlayer(state, action.playerId);
     const trick = getTrickDef(action.trickId);
+
     // Remove from deck
     const newDeck = state.trickDecks[trick.category].filter(id => id !== action.trickId);
     let s: GameState = {
       ...state,
       trickDecks: { ...state.trickDecks, [trick.category]: newDeck },
     };
-    // v3: 심볼 마커 배정 + TrickSlot에 symbolIndex 포함
+
+    // v4: 코인 대납 처리
+    if (player.fame < trick.fameThreshold) {
+      const deficit = trick.fameThreshold - player.fame;
+      s = updatePlayer(s, action.playerId, p => ({
+        coins: Math.max(0, p.coins - deficit),
+      }));
+    }
+
+    // Mark Dahlgaard die as used (find first unmarked matching die)
+    const dahlgaard = s.downtownDice.DAHLGAARD;
+    const marked = [...s.downtownDice.marked.DAHLGAARD];
+    for (let i = 0; i < dahlgaard.length; i++) {
+      if (!marked[i]) {
+        const face = dahlgaard[i];
+        if (face === trick.category || face === 'ANY') {
+          marked[i] = true;
+          break;
+        }
+      }
+    }
+    s = {
+      ...s,
+      downtownDice: {
+        ...s.downtownDice,
+        marked: { ...s.downtownDice.marked, DAHLGAARD: marked },
+      },
+    };
+
     s = updatePlayer(s, action.playerId, p => ({
       tricks: [...p.tricks, {
         trickId: action.trickId,
@@ -157,24 +199,54 @@ registerHandler<RerollAction>('REROLL', {
     if (!['DAHLGAARD', 'INN', 'BANK'].includes(action.diceGroup)) {
       errors.push(err('diceGroup', '잘못된 주사위 그룹'));
     }
+    const dice = state.downtownDice[action.diceGroup];
+    if (action.dieIndex < 0 || action.dieIndex >= dice.length) {
+      errors.push(err('dieIndex', '주사위 인덱스 오류'));
+    }
     return errors;
   },
   apply(state, action) {
     const player = getPlayer(state, action.playerId);
     const group = action.diceGroup;
     const faces = DICE_FACES[group];
-    const dice = state.downtownDice[group];
-    let s = state;
-    const newDice = [...dice] as typeof dice extends readonly (infer T)[] ? T[] : never;
-    for (let i = 0; i < newDice.length; i++) {
-      if (!state.downtownDice.marked[group][i]) {
-        const { value, state: ns } = rngRollDie(s, faces as readonly any[]);
-        newDice[i] = value;
-        s = ns;
-      }
+
+    // v4: 주사위 1개만 리롤
+    const dice = [...state.downtownDice[group]] as any[];
+    const { value, state: ns } = rngRollDie(state, faces as readonly any[]);
+    dice[action.dieIndex] = value;
+    let s: GameState = { ...ns, downtownDice: { ...ns.downtownDice, [group]: dice } };
+    s = addLog(s, `${player.name}이(가) ${group}[${action.dieIndex}] 주사위 리롤`);
+    return s;
+  },
+});
+
+registerHandler<SetDieAction>('SET_DIE', {
+  validate(state, action) {
+    const errors: ValidationError[] = [];
+    if (!['DAHLGAARD', 'INN', 'BANK'].includes(action.diceGroup)) {
+      errors.push(err('diceGroup', '잘못된 주사위 그룹'));
+      return errors;
     }
-    s = { ...s, downtownDice: { ...s.downtownDice, [group]: newDice } };
-    s = addLog(s, `${player.name}이(가) ${group} 주사위 리롤`);
+    const dice = state.downtownDice[action.diceGroup];
+    if (action.dieIndex < 0 || action.dieIndex >= dice.length) {
+      errors.push(err('dieIndex', '주사위 인덱스 오류'));
+    }
+    // Validate desired face is valid for this group
+    const validFaces = DICE_FACES[action.diceGroup] as readonly (string | number)[];
+    if (!validFaces.includes(action.desiredFace)) {
+      errors.push(err('face', '해당 주사위 그룹의 유효한 면이 아닙니다'));
+    }
+    return errors;
+  },
+  apply(state, action) {
+    const player = getPlayer(state, action.playerId);
+    const dice = [...state.downtownDice[action.diceGroup]] as any[];
+    dice[action.dieIndex] = action.desiredFace;
+    let s: GameState = {
+      ...state,
+      downtownDice: { ...state.downtownDice, [action.diceGroup]: dice },
+    };
+    s = addLog(s, `${player.name}이(가) ${action.diceGroup}[${action.dieIndex}]를 ${action.desiredFace}로 설정`);
     return s;
   },
 });

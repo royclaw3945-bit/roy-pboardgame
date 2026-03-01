@@ -1,4 +1,4 @@
-// Stage 7 Tests — phase transitions + round cycle (v3)
+// Stage 7 Tests — phase transitions + round cycle (v4: DA only)
 
 import { describe, it, expect } from 'vitest';
 import { createGame } from '../state/init';
@@ -10,18 +10,20 @@ import { advanceTurn } from './placement';
 import { buildPerformanceOrder, advanceToEndTurn } from './performance';
 import { payWages, cyclePerfCards, executeEndTurn } from './end-turn';
 import { updatePlayer, updateCharacter, adjustFame } from '../state/helpers';
-import type { PlayerId, PlayerConfig, GameState, AssignmentCardPlacement } from '../types';
+import type { PlayerId, PlayerConfig, GameState } from '../types';
 
 const CONFIGS: readonly PlayerConfig[] = [
-  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true },
-  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false },
+  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true,
+    startingSpecialist: 'ENGINEER', startingComponents: ['METAL', 'METAL'] },
+  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false,
+    startingSpecialist: 'MANAGER', startingComponents: ['FABRIC', 'FABRIC'] },
 ];
 
 function setup(): GameState {
   return createGame(CONFIGS, { seed: 42 });
 }
 
-/** Helper: assign characters using v3 PLACE_ASSIGNMENT_CARD flow */
+/** Helper: assign characters using v4 PLACE_ASSIGNMENT_CARD flow */
 function assignBothPlayers(state: GameState): GameState {
   let s = { ...state, phase: 'ASSIGNMENT' as const };
   s = initAssignmentPhase(s);
@@ -51,14 +53,15 @@ function assignBothPlayers(state: GameState): GameState {
   return s5;
 }
 
-describe('executeSetup', () => {
+describe('executeSetup (v4)', () => {
   it('rolls dice and advances to ADVERTISE', () => {
     const state = setup();
     const result = executeSetup(state);
     expect(result.phase).toBe('ADVERTISE');
-    expect(result.downtownDice.DAHLGAARD.length).toBe(6);
-    expect(result.downtownDice.INN.length).toBe(6);
-    expect(result.downtownDice.BANK.length).toBe(6);
+    // v4: 2 dice per group
+    expect(result.downtownDice.DAHLGAARD.length).toBe(2);
+    expect(result.downtownDice.INN.length).toBe(2);
+    expect(result.downtownDice.BANK.length).toBe(2);
     expect(result.log.length).toBeGreaterThan(0);
   });
 
@@ -69,7 +72,7 @@ describe('executeSetup', () => {
     expect(new Set(result.initiativeOrder).size).toBe(2);
   });
 
-  it('resets player round state (v3)', () => {
+  it('resets player round state', () => {
     let state = setup();
     state = updatePlayer(state, 0 as PlayerId, () => ({
       hasAdvertised: true, usedAbilityThisTurn: true, chosenWeekday: 'FRIDAY' as const,
@@ -127,7 +130,7 @@ describe('advertise phase', () => {
   });
 });
 
-describe('assignment phase (v3)', () => {
+describe('assignment phase (v4)', () => {
   it('allPlayersAssigned returns false initially', () => {
     const state = setup();
     expect(allPlayersAssigned(state)).toBe(false);
@@ -138,7 +141,7 @@ describe('assignment phase (v3)', () => {
     expect(allPlayersAssigned(state)).toBe(true);
   });
 
-  it('buildTurnQueue creates entries for assigned characters (v3)', () => {
+  it('buildTurnQueue creates entries for assigned characters', () => {
     const state = assignBothPlayers(executeSetup(setup()));
     const queue = buildTurnQueue(state);
     expect(queue.length).toBe(2);
@@ -183,7 +186,7 @@ describe('placement phase', () => {
   });
 });
 
-describe('performance phase (v3)', () => {
+describe('performance phase (v4)', () => {
   it('buildPerformanceOrder uses weekdayPerformers', () => {
     let state = setup();
     state = {
@@ -215,33 +218,60 @@ describe('performance phase (v3)', () => {
   });
 });
 
-describe('end-turn phase', () => {
-  it('payWages deducts from coins', () => {
+describe('end-turn phase (v4)', () => {
+  it('payWages: Idle characters exempt', () => {
     const state = setup();
+    // All characters are idle (not assigned/placed) → no wages
     const result = payWages(state);
+    expect(result.players[0].coins).toBe(state.players[0].coins);
+  });
+
+  it('payWages: assigned characters pay', () => {
+    let state = setup();
+    // Mark apprentice as assigned (not idle)
+    state = updateCharacter(state, 0 as PlayerId, 1, () => ({
+      assigned: true, placed: true,
+    }));
+    const result = payWages(state);
+    // Apprentice wage = 1
     expect(result.players[0].coins).toBe(state.players[0].coins - 1);
   });
 
   it('payWages penalizes fame when can\'t pay', () => {
     let state = setup();
     state = updatePlayer(state, 0 as PlayerId, () => ({ coins: 0 }));
+    state = updateCharacter(state, 0 as PlayerId, 1, () => ({
+      assigned: true, placed: true,
+    }));
     const result = payWages(state);
     expect(result.players[0].fame).toBe(state.players[0].fame - 2);
   });
 
-  it('cyclePerfCards rotates cards', () => {
-    const state = setup();
+  it('cyclePerfCards: round 1-2 adds card but does NOT discard', () => {
+    let state = setup();
+    state = { ...state, round: 1 };
+    const initialCardCount = state.theater.perfCards.length;
+    const result = cyclePerfCards(state);
+    // No discard before round 3 → cards grow by 1
+    expect(result.theater.perfCards.length).toBe(initialCardCount + 1);
+    expect(result.theater.perfDiscard.length).toBe(0);
+  });
+
+  it('cyclePerfCards: round 3+ discards oldest', () => {
+    let state = setup();
+    state = { ...state, round: 3 };
     const initialCount = state.theater.perfCards.length;
     const result = cyclePerfCards(state);
+    // Discard 1, draw 1 → same count
     expect(result.theater.perfCards.length).toBe(initialCount);
     expect(result.theater.perfDiscard.length).toBe(1);
-    expect(result.theater.perfDeck.length).toBe(state.theater.perfDeck.length - 1);
   });
 
   it('cyclePerfCards resets weekdayPerformers', () => {
     let state = setup();
     state = {
       ...state,
+      round: 3,
       theater: {
         ...state.theater,
         weekdayPerformers: {
@@ -274,7 +304,7 @@ describe('end-turn phase', () => {
   });
 });
 
-describe('full round cycle (v3)', () => {
+describe('full round cycle (v4)', () => {
   it('SETUP → ADVERTISE → ASSIGNMENT → PLACEMENT → PERFORMANCE → END_TURN', () => {
     let state = setup();
 
@@ -288,7 +318,7 @@ describe('full round cycle (v3)', () => {
     state = checkAdvertiseComplete(s3);
     expect(state.phase).toBe('ASSIGNMENT');
 
-    // v3: PLACE_ASSIGNMENT_CARD + SUBMIT + REVEAL
+    // v4: PLACE_ASSIGNMENT_CARD + SUBMIT + REVEAL
     state = assignBothPlayers(state);
     expect(state.phase).toBe('ASSIGNMENT_REVEAL');
 

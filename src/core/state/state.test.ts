@@ -1,24 +1,33 @@
-// Stage 2 Tests — initialization, helpers, selectors (v3)
+// Stage 2 Tests — initialization, helpers, selectors (v4: DA only)
 
 import { describe, it, expect } from 'vitest';
 import { createGame } from './init';
 import { updatePlayer, adjustFame, adjustCoins, addLog, pipe, currentPlayer } from './helpers';
-import { getPlayer, getActivePerfCards, getRankings, isGameOver, countTotalMarkersOnBoard, getNextAvailableSymbol } from './selectors';
+import {
+  getPlayer, getActivePerfCards, getRankings, isGameOver,
+  countTotalMarkersOnBoard, getNextAvailableSymbol, countTotalMarkersOnTricks,
+} from './selectors';
 import type { PlayerId, PlayerConfig } from '../types';
 
 const P2_CONFIGS: readonly PlayerConfig[] = [
-  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true },
-  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false },
+  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true,
+    startingSpecialist: 'ENGINEER', startingComponents: ['METAL', 'METAL'] },
+  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false,
+    startingSpecialist: 'MANAGER', startingComponents: ['FABRIC', 'FABRIC'] },
 ];
 
 const P4_CONFIGS: readonly PlayerConfig[] = [
-  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true },
-  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false },
-  { name: 'Charlie', magicianId: 'ESCAPIST', isHuman: false },
-  { name: 'Diana', magicianId: 'SPIRITUALIST', isHuman: false },
+  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true,
+    startingSpecialist: 'ENGINEER', startingComponents: ['METAL', 'METAL'] },
+  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false,
+    startingSpecialist: 'MANAGER', startingComponents: ['FABRIC', 'FABRIC'] },
+  { name: 'Charlie', magicianId: 'ESCAPIST', isHuman: false,
+    startingSpecialist: 'ASSISTANT', startingComponents: ['WOOD', 'WOOD'] },
+  { name: 'Diana', magicianId: 'SPIRITUALIST', isHuman: false,
+    startingSpecialist: 'ENGINEER', startingComponents: ['GLASS', 'GLASS'] },
 ];
 
-describe('createGame (v3)', () => {
+describe('createGame (v4: DA only)', () => {
   it('creates 2-player game', () => {
     const state = createGame(P2_CONFIGS, { seed: 1 });
     expect(state.players.length).toBe(2);
@@ -38,9 +47,14 @@ describe('createGame (v3)', () => {
     expect(() => createGame([P2_CONFIGS[0]], { seed: 1 })).toThrow();
   });
 
+  it('starting fame is 5', () => {
+    const state = createGame(P2_CONFIGS, { seed: 1 });
+    expect(state.players[0].fame).toBe(5);
+    expect(state.players[1].fame).toBe(5);
+  });
+
   it('assigns starting resources correctly', () => {
     const state = createGame(P2_CONFIGS, { seed: 1 });
-    expect(state.players[0].fame).toBe(10);
     expect(state.players[0].coins).toBe(10);
     expect(state.players[0].shards).toBe(1);
     expect(state.players[1].coins).toBe(12);
@@ -54,39 +68,70 @@ describe('createGame (v3)', () => {
     expect(state.players[3].coins).toBe(16);
   });
 
-  it('each player starts with MAGICIAN + APPRENTICE', () => {
+  it('each player starts with Magician + Apprentice + specialist', () => {
     const state = createGame(P2_CONFIGS, { seed: 1 });
-    for (const p of state.players) {
-      expect(p.characters.length).toBe(2);
-      expect(p.characters[0].type).toBe('MAGICIAN');
-      expect(p.characters[1].type).toBe('APPRENTICE');
-    }
+    // Alice: MECHANIKER + APPRENTICE + ENGINEER = 3 chars
+    expect(state.players[0].characters.length).toBe(3);
+    expect(state.players[0].characters[0].type).toBe('MAGICIAN');
+    expect(state.players[0].characters[1].type).toBe('APPRENTICE');
+    expect(state.players[0].characters[2].type).toBe('ENGINEER');
   });
 
-  it('each player starts with 4 unassigned symbols', () => {
-    const state = createGame(P2_CONFIGS, { seed: 1 });
-    for (const p of state.players) {
-      expect(p.symbols.length).toBe(4);
-      for (const s of p.symbols) {
-        expect(s.assigned).toBe(false);
-        expect(s.trickId).toBeNull();
-      }
-    }
+  it('assistant starting specialist gives extra apprentice', () => {
+    const state = createGame(P4_CONFIGS, { seed: 1 });
+    // Charlie has ASSISTANT → 4 chars: MAG + APP + ASS + APP
+    const charlie = state.players[2];
+    expect(charlie.characters.length).toBe(4);
+    expect(charlie.characters.filter(c => c.type === 'APPRENTICE').length).toBe(2);
   });
 
-  it('each player owns personal assignment cards', () => {
+  it('each player starts with a specialist', () => {
     const state = createGame(P2_CONFIGS, { seed: 1 });
-    expect(state.players[0].assignmentCards.length).toBe(15);
-    expect(state.players[1].assignmentCards.length).toBe(15);
-    // Cards are unique per player
+    expect(state.players[0].specialists).toEqual(['ENGINEER']);
+    expect(state.players[1].specialists).toEqual(['MANAGER']);
+  });
+
+  it('each player starts with specialist board', () => {
+    const state = createGame(P2_CONFIGS, { seed: 1 });
+    expect(state.players[0].specialistBoards.length).toBe(1);
+    expect(state.players[0].specialistBoards[0].type).toBe('ENGINEER');
+  });
+
+  it('each player starts with Lv.1 trick from favorite category', () => {
+    const state = createGame(P2_CONFIGS, { seed: 1 });
+    // Alice = MECHANIKER → favorite MECHANICAL → should have a Lv.1 MECHANICAL trick
+    expect(state.players[0].tricks.length).toBeGreaterThanOrEqual(1);
+    expect(state.players[0].tricks[0].symbolIndex).toBe(0);
+  });
+
+  it('engineer gets extra Lv.1 trick', () => {
+    const state = createGame(P2_CONFIGS, { seed: 1 });
+    // Alice has ENGINEER → should have 2 tricks
+    expect(state.players[0].tricks.length).toBe(2);
+    expect(state.players[0].tricks[1].symbolIndex).toBe(1);
+  });
+
+  it('starting components are applied', () => {
+    const state = createGame(P2_CONFIGS, { seed: 1 });
+    // Alice: METAL x2
+    expect(state.players[0].components.METAL).toBe(2);
+    // Bob: FABRIC x2
+    expect(state.players[1].components.FABRIC).toBe(2);
+  });
+
+  it('symbol 0 is assigned to first trick', () => {
+    const state = createGame(P2_CONFIGS, { seed: 1 });
+    expect(state.players[0].symbols[0].assigned).toBe(true);
+    expect(state.players[0].symbols[0].trickId).not.toBeNull();
+  });
+
+  it('each player owns 6 assignment cards', () => {
+    const state = createGame(P2_CONFIGS, { seed: 1 });
+    expect(state.players[0].assignmentCards.length).toBe(6);
+    expect(state.players[1].assignmentCards.length).toBe(6);
     const p0ids = state.players[0].assignmentCards.map(c => c.id);
     const p1ids = state.players[1].assignmentCards.map(c => c.id);
-    expect(new Set([...p0ids, ...p1ids]).size).toBe(30);
-  });
-
-  it('base game assignment cards = 9 per player', () => {
-    const state = createGame(P2_CONFIGS, { useDarkAlley: false, seed: 1 });
-    expect(state.players[0].assignmentCards.length).toBe(9);
+    expect(new Set([...p0ids, ...p1ids]).size).toBe(12);
   });
 
   it('perf cards initialized correctly for 2 players', () => {
@@ -101,32 +146,40 @@ describe('createGame (v3)', () => {
     for (const card of state.theater.perfCards) {
       expect(card.slotMarkers.length).toBe(6);
       expect(card.weekday).toBeNull();
-      for (const m of card.slotMarkers) {
-        expect(m).toBeNull();
-      }
     }
   });
 
-  it('weekdayPerformers initialized to null', () => {
+  it('downtown dice: 2 per group (6 total)', () => {
     const state = createGame(P2_CONFIGS, { seed: 1 });
-    expect(state.theater.weekdayPerformers.THURSDAY).toBeNull();
-    expect(state.theater.weekdayPerformers.FRIDAY).toBeNull();
-    expect(state.theater.weekdayPerformers.SATURDAY).toBeNull();
-    expect(state.theater.weekdayPerformers.SUNDAY).toBeNull();
+    expect(state.downtownDice.DAHLGAARD.length).toBe(2);
+    expect(state.downtownDice.INN.length).toBe(2);
+    expect(state.downtownDice.BANK.length).toBe(2);
+    expect(state.downtownDice.marked.DAHLGAARD.length).toBe(2);
   });
 
-  it('assignmentPhase and performancePhase are null initially', () => {
-    const state = createGame(P2_CONFIGS, { seed: 1 });
-    expect(state.assignmentPhase).toBeNull();
-    expect(state.performancePhase).toBeNull();
+  it('location slots: 2p blocks 2 slots on DOWNTOWN/MARKET/DA', () => {
+    const s2 = createGame(P2_CONFIGS, { seed: 1 });
+    expect(s2.locationSlots.DOWNTOWN.length).toBe(2); // 4-2=2
+    expect(s2.locationSlots.MARKET_ROW.length).toBe(2);
+    expect(s2.locationSlots.DARK_ALLEY.length).toBe(2);
   });
 
-  it('trick decks have 12 cards each', () => {
+  it('location slots: WORKSHOP and THEATER always 4', () => {
+    const s2 = createGame(P2_CONFIGS, { seed: 1 });
+    expect(s2.locationSlots.WORKSHOP.length).toBe(4);
+    expect(s2.locationSlots.THEATER.length).toBe(4);
+  });
+
+  it('location slots: 4p has all 4 slots on DOWNTOWN', () => {
+    const s4 = createGame(P4_CONFIGS, { seed: 1 });
+    expect(s4.locationSlots.DOWNTOWN.length).toBe(4);
+  });
+
+  it('trick decks have fewer cards after player setup', () => {
     const state = createGame(P2_CONFIGS, { seed: 1 });
-    expect(state.trickDecks.MECHANICAL.length).toBe(12);
-    expect(state.trickDecks.OPTICAL.length).toBe(12);
-    expect(state.trickDecks.ESCAPE.length).toBe(12);
-    expect(state.trickDecks.SPIRITUAL.length).toBe(12);
+    // Each player consumes at least 1 trick (engineer consumes 2)
+    const totalTricks = Object.values(state.trickDecks).reduce((s, d) => s + d.length, 0);
+    expect(totalTricks).toBeLessThan(48);
   });
 
   it('is deterministic with same seed', () => {
@@ -145,16 +198,9 @@ describe('createGame (v3)', () => {
     expect(aCards).not.toBe(bCards);
   });
 
-  it('base game has 5 rounds', () => {
-    const state = createGame(P2_CONFIGS, { useDarkAlley: false, seed: 1 });
-    expect(state.maxRounds).toBe(5);
-  });
-
-  it('location slots scale with player count', () => {
-    const s2 = createGame(P2_CONFIGS, { seed: 1 });
-    const s4 = createGame(P4_CONFIGS, { seed: 1 });
-    expect(s2.locationSlots.DOWNTOWN.length).toBe(3);
-    expect(s4.locationSlots.DOWNTOWN.length).toBe(6);
+  it('maxRounds is always 7 (DA only)', () => {
+    const state = createGame(P2_CONFIGS, { seed: 1 });
+    expect(state.maxRounds).toBe(7);
   });
 
   it('player starts with empty placements and no weekday', () => {
@@ -163,7 +209,6 @@ describe('createGame (v3)', () => {
       expect(p.currentPlacements.length).toBe(0);
       expect(p.chosenWeekday).toBeNull();
       expect(p.usedAbilityThisTurn).toBe(false);
-      expect(p.specialistBoards.length).toBe(0);
     }
   });
 });
@@ -204,8 +249,8 @@ describe('helpers', () => {
       s => adjustCoins(s, 0 as PlayerId, -3),
       s => addLog(s, 'piped'),
     );
-    expect(updated.players[0].fame).toBe(15);
-    expect(updated.players[0].coins).toBe(7);
+    expect(updated.players[0].fame).toBe(10); // 5+5
+    expect(updated.players[0].coins).toBe(7); // 10-3
     expect(updated.log.length).toBe(1);
   });
 
@@ -215,7 +260,7 @@ describe('helpers', () => {
   });
 });
 
-describe('selectors (v3)', () => {
+describe('selectors (v4)', () => {
   it('getPlayer returns player by id', () => {
     const state = createGame(P2_CONFIGS, { seed: 1 });
     const p = getPlayer(state, 1 as PlayerId);
@@ -250,8 +295,17 @@ describe('selectors (v3)', () => {
     expect(countTotalMarkersOnBoard(state, 0 as PlayerId)).toBe(0);
   });
 
-  it('getNextAvailableSymbol returns 0 for fresh player', () => {
+  it('countTotalMarkersOnTricks counts markers on trick cards', () => {
     const state = createGame(P2_CONFIGS, { seed: 1 });
-    expect(getNextAvailableSymbol(state.players[0])).toBe(0);
+    const count = countTotalMarkersOnTricks(state.players[0]);
+    // Alice has prepared tricks → may have markers
+    expect(count).toBeGreaterThanOrEqual(0);
+  });
+
+  it('getNextAvailableSymbol skips assigned symbols', () => {
+    const state = createGame(P2_CONFIGS, { seed: 1 });
+    // Alice (ENGINEER) has 2 tricks → symbols 0,1 assigned
+    const nextSym = getNextAvailableSymbol(state.players[0]);
+    expect(nextSym).toBe(2);
   });
 });

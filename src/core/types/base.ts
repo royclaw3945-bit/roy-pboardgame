@@ -62,7 +62,8 @@ export type DaAbilityId =
 
 // -- End Bonus --
 export type EndBonusType =
-  | 'TRICK_MARKERS_ON_PERF'
+  | 'TRICK_MARKERS_ON_TRICK'
+  | 'PER_SPECIAL_CARD'
   | 'PER_SHARD'
   | 'PER_L1_TRICK'
   | 'PER_L2_TRICK'

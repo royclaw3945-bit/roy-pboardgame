@@ -10,9 +10,8 @@ export function LocationsGrid() {
   const state = useGameStore((s) => s.state);
   if (!state) return null;
 
-  const shown = state.config.useDarkAlley
-    ? LOCATIONS
-    : LOCATIONS.filter((l) => l !== 'DARK_ALLEY');
+  // v4: DA always enabled
+  const shown = LOCATIONS;
 
   return (
     <div className="flex flex-col gap-1.5">

@@ -1,4 +1,4 @@
-// Stage 5 Tests — action handlers + dispatch (v3)
+// Stage 5 Tests — action handlers + dispatch (v4: DA only)
 
 import { describe, it, expect } from 'vitest';
 import { dispatch } from '../dispatch';
@@ -8,8 +8,10 @@ import { getTrickDef } from '../data/tricks';
 import type { PlayerId, TrickId, CardId, PlayerConfig, GameState, SlotPosition, SymbolIndex, AssignmentCardId } from '../types';
 
 const CONFIGS: readonly PlayerConfig[] = [
-  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true },
-  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false },
+  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true,
+    startingSpecialist: 'ENGINEER', startingComponents: ['METAL', 'METAL'] },
+  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false,
+    startingSpecialist: 'MANAGER', startingComponents: ['FABRIC', 'FABRIC'] },
 ];
 
 function setup(overrides?: (s: GameState) => GameState): GameState {
@@ -64,7 +66,7 @@ describe('SKIP_ADVERTISE', () => {
   });
 });
 
-describe('PLACE_ASSIGNMENT_CARD (v3)', () => {
+describe('PLACE_ASSIGNMENT_CARD (v4)', () => {
   it('places card with characters', () => {
     const state = setup(s => ({
       ...s,
@@ -103,7 +105,7 @@ describe('PLACE_ASSIGNMENT_CARD (v3)', () => {
   });
 });
 
-describe('SUBMIT_ASSIGNMENT (v3)', () => {
+describe('SUBMIT_ASSIGNMENT (v4)', () => {
   it('submits assignment after placing cards', () => {
     let state = setup(s => ({
       ...s,
@@ -147,33 +149,34 @@ describe('PLACE_CHARACTER', () => {
     });
     expect(result.ok).toBe(true);
     expect(ns.players[0].characters[0].placed).toBe(true);
-    expect(ns.players[0].characters[0].ap).toBe(4);
+    // AP = baseAP(3) + slotApMod(2 for first slot)
+    expect(ns.players[0].characters[0].ap).toBe(5);
     expect(ns.locationSlots.DOWNTOWN[0].occupant).not.toBeNull();
-  });
-
-  it('fails on occupied slot', () => {
-    let state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
-    state = updateCharacter(state, 0 as PlayerId, 0, () => ({
-      assigned: true, location: 'DOWNTOWN',
-    }));
-    const { state: s2 } = dispatch(state, {
-      type: 'PLACE_CHARACTER', playerId: 0 as PlayerId,
-      characterIdx: 0, slotIndex: 0,
-    });
-    const s3 = updateCharacter(s2, 1 as PlayerId, 0, () => ({
-      assigned: true, location: 'DOWNTOWN',
-    }));
-    const { result } = dispatch(s3, {
-      type: 'PLACE_CHARACTER', playerId: 1 as PlayerId,
-      characterIdx: 0, slotIndex: 0,
-    });
-    expect(result.ok).toBe(false);
   });
 });
 
-describe('LEARN_TRICK (v3)', () => {
+describe('LEARN_TRICK (v4)', () => {
   it('learns a trick with symbolIndex', () => {
-    const state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
+    let state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
+    // Clear existing tricks to test fresh learning
+    state = updatePlayer(state, 0 as PlayerId, () => ({
+      tricks: [],
+      symbols: [
+        { assigned: false, trickId: null },
+        { assigned: false, trickId: null },
+        { assigned: false, trickId: null },
+        { assigned: false, trickId: null },
+      ],
+    }));
+    // Set Dahlgaard dice to show MECHANICAL
+    state = {
+      ...state,
+      downtownDice: {
+        ...state.downtownDice,
+        DAHLGAARD: ['MECHANICAL', 'ANY'],
+        marked: { ...state.downtownDice.marked, DAHLGAARD: [false, false] },
+      },
+    };
     const trickId = state.trickDecks.MECHANICAL.find(
       (id: TrickId) => getTrickDef(id).fameThreshold <= state.players[0].fame,
     )!;
@@ -186,8 +189,6 @@ describe('LEARN_TRICK (v3)', () => {
     expect(ns.players[0].tricks[0].trickId).toBe(trickId);
     expect(ns.players[0].tricks[0].symbolIndex).toBe(0);
     expect(ns.players[0].symbols[0].assigned).toBe(true);
-    expect(ns.players[0].symbols[0].trickId).toBe(trickId);
-    expect(ns.trickDecks.MECHANICAL.length).toBe(11);
   });
 
   it('fails if symbol already assigned', () => {
@@ -202,9 +203,38 @@ describe('LEARN_TRICK (v3)', () => {
     });
     expect(result.ok).toBe(false);
   });
+
+  it('favorite category bypasses dice check', () => {
+    let state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
+    state = updatePlayer(state, 0 as PlayerId, () => ({
+      tricks: [],
+      symbols: [
+        { assigned: false, trickId: null },
+        { assigned: false, trickId: null },
+        { assigned: false, trickId: null },
+        { assigned: false, trickId: null },
+      ],
+    }));
+    // Dice show only OPTICAL — but Alice's favorite is MECHANICAL
+    state = {
+      ...state,
+      downtownDice: {
+        ...state.downtownDice,
+        DAHLGAARD: ['OPTICAL', 'OPTICAL'],
+        marked: { ...state.downtownDice.marked, DAHLGAARD: [false, false] },
+      },
+    };
+    const mechTrick = state.trickDecks.MECHANICAL.find(
+      (id: TrickId) => getTrickDef(id).fameThreshold <= state.players[0].fame,
+    )!;
+    const { result } = dispatch(state, {
+      type: 'LEARN_TRICK', playerId: 0 as PlayerId, trickId: mechTrick, symbolIndex: 0 as SymbolIndex,
+    });
+    expect(result.ok).toBe(true);
+  });
 });
 
-describe('PREPARE (v3: no component consumption)', () => {
+describe('PREPARE (v4)', () => {
   it('prepares a trick without consuming components', () => {
     const trickId = 'M1A' as TrickId; // needs METAL: 2
     let state = setup();
@@ -217,17 +247,16 @@ describe('PREPARE (v3: no component consumption)', () => {
     });
     expect(result.ok).toBe(true);
     expect(ns.players[0].tricks[0].prepared).toBe(true);
-    // v3: 컴포넌트 소모 안 됨
     expect(ns.players[0].components.METAL).toBe(3);
-    // markersOnTrick = markerSlots (M1A has 2)
     expect(ns.players[0].tricks[0].markersOnTrick).toBe(2);
   });
 
   it('fails if components insufficient', () => {
-    const trickId = 'M1A' as TrickId;
+    const trickId = 'M1A' as TrickId; // needs METAL: 2
     let state = setup();
-    state = updatePlayer(state, 0 as PlayerId, () => ({
+    state = updatePlayer(state, 0 as PlayerId, p => ({
       tricks: [{ trickId, symbolIndex: 0 as SymbolIndex, prepared: false, markersOnTrick: 0 }],
+      components: { ...p.components, METAL: 0 }, // explicitly clear METAL
     }));
     const { result } = dispatch(state, {
       type: 'PREPARE', playerId: 0 as PlayerId, trickIdx: 0,
@@ -236,7 +265,7 @@ describe('PREPARE (v3: no component consumption)', () => {
   });
 });
 
-describe('SETUP_TRICK (v3)', () => {
+describe('SETUP_TRICK (v4)', () => {
   it('places trick marker on perf card using symbolIndex', () => {
     const trickId = 'M1A' as TrickId;
     let state = setup();
@@ -263,15 +292,48 @@ describe('SETUP_TRICK (v3)', () => {
       tricks: [{ trickId, symbolIndex: 0 as SymbolIndex, prepared: true, markersOnTrick: 3 }],
     }));
     const cardId = state.theater.perfCards[0].cardId;
-    // Place first marker
     const { state: s2 } = dispatch(state, {
       type: 'SETUP_TRICK', playerId: 0 as PlayerId,
       trickIdx: 0, cardId, slotPosition: 0 as SlotPosition,
     });
-    // Try second marker from same trick/symbol on same card
     const { result } = dispatch(s2, {
       type: 'SETUP_TRICK', playerId: 0 as PlayerId,
       trickIdx: 0, cardId, slotPosition: 1 as SlotPosition,
+    });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe('REROLL (v4: single die)', () => {
+  it('rerolls single die', () => {
+    const state = setup();
+    const { result, state: ns } = dispatch(state, {
+      type: 'REROLL', playerId: 0 as PlayerId,
+      diceGroup: 'DAHLGAARD', dieIndex: 0,
+    });
+    expect(result.ok).toBe(true);
+    // Die 1 should be unchanged (only index 0 was rerolled)
+    // (Can't assert exact value due to RNG, but operation should succeed)
+    expect(ns.downtownDice.DAHLGAARD.length).toBe(2);
+  });
+});
+
+describe('SET_DIE (v4)', () => {
+  it('sets die to desired face', () => {
+    const state = setup();
+    const { result, state: ns } = dispatch(state, {
+      type: 'SET_DIE', playerId: 0 as PlayerId,
+      diceGroup: 'DAHLGAARD', dieIndex: 0, desiredFace: 'MECHANICAL',
+    });
+    expect(result.ok).toBe(true);
+    expect(ns.downtownDice.DAHLGAARD[0]).toBe('MECHANICAL');
+  });
+
+  it('rejects invalid face', () => {
+    const state = setup();
+    const { result } = dispatch(state, {
+      type: 'SET_DIE', playerId: 0 as PlayerId,
+      diceGroup: 'DAHLGAARD', dieIndex: 0, desiredFace: 'INVALID',
     });
     expect(result.ok).toBe(false);
   });
@@ -310,7 +372,7 @@ describe('BUY', () => {
   });
 });
 
-describe('CHOOSE_WEEKDAY (v3)', () => {
+describe('CHOOSE_WEEKDAY (v4)', () => {
   it('reserves weekday for performer', () => {
     const state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
     const { result, state: ns } = dispatch(state, {

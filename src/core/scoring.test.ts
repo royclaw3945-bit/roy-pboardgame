@@ -1,4 +1,4 @@
-// Stage 7 Tests — scoring + 7-round simulation (v3)
+// Stage 7 Tests — scoring + 7-round simulation (v4: DA only)
 
 import { describe, it, expect } from 'vitest';
 import { createGame } from './state/init';
@@ -14,11 +14,13 @@ import { updatePlayer } from './state/helpers';
 import type { PlayerId, TrickId, SymbolIndex, PlayerConfig, GameState } from './types';
 
 const CONFIGS: readonly PlayerConfig[] = [
-  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true },
-  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false },
+  { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true,
+    startingSpecialist: 'ENGINEER', startingComponents: ['METAL', 'METAL'] },
+  { name: 'Bob', magicianId: 'OPTICIAN', isHuman: false,
+    startingSpecialist: 'MANAGER', startingComponents: ['FABRIC', 'FABRIC'] },
 ];
 
-/** Helper: v3 assignment — both players place DOWNTOWN card with magician */
+/** Helper: v4 assignment — both players place DOWNTOWN card with magician */
 function assignBothPlayers(state: GameState): GameState {
   let s = { ...state, phase: 'ASSIGNMENT' as const };
   s = initAssignmentPhase(s);
@@ -48,33 +50,23 @@ function assignBothPlayers(state: GameState): GameState {
   return s5;
 }
 
-describe('calculateScores', () => {
+describe('calculateScores (v4)', () => {
   it('calculates base scores correctly', () => {
     const state = createGame(CONFIGS, { seed: 42 });
     const scores = calculateScores(state);
     expect(scores.length).toBe(2);
-    // Base fame = 10 for both
-    expect(scores[0].baseFame).toBe(10);
+    // v4: base fame = 5
+    expect(scores[0].baseFame).toBe(5);
     // Shard bonus: 1 shard × 1 = 1
     expect(scores[0].shardBonus).toBe(1);
     // Coin bonus: 10 coins / 3 = 3
     expect(scores[0].coinBonus).toBe(3);
-    // Character bonus: 1 apprentice × 2 + 0 specialists × 3 = 2
-    expect(scores[0].characterBonus).toBe(2);
-    // Total: 10 + 1 + 3 + 2 = 16
-    expect(scores[0].totalFame).toBe(16);
+    // v4: special card bonus (stub: 0 special cards)
+    expect(scores[0].specialCardBonus).toBe(0);
   });
 
-  it('player 1 has more coins → higher coin bonus', () => {
-    const state = createGame(CONFIGS, { seed: 42 });
-    const scores = calculateScores(state);
-    // Player 1 starts with 12 coins → 12/3 = 4
-    expect(scores[1].coinBonus).toBe(4);
-  });
-
-  it('trick end bonuses work', () => {
+  it('trick end bonus: PER_SHARD', () => {
     let state = createGame(CONFIGS, { seed: 42 });
-    // Give Alice M3B (PER_SHARD, famePerUnit: 1) + 5 shards
     state = updatePlayer(state, 0 as PlayerId, () => ({
       tricks: [{
         trickId: 'M3B' as TrickId, symbolIndex: 0 as SymbolIndex,
@@ -86,7 +78,7 @@ describe('calculateScores', () => {
     expect(scores[0].trickEndBonus).toBe(5); // 5 shards × 1
   });
 
-  it('ALL_SPECIALISTS bonus requires all 3', () => {
+  it('trick end bonus: ALL_SPECIALISTS', () => {
     let state = createGame(CONFIGS, { seed: 42 });
     state = updatePlayer(state, 0 as PlayerId, () => ({
       tricks: [{
@@ -99,7 +91,7 @@ describe('calculateScores', () => {
     expect(scores[0].trickEndBonus).toBe(12);
   });
 
-  it('FOUR_TRICKS bonus when has 4 tricks', () => {
+  it('trick end bonus: FOUR_TRICKS', () => {
     let state = createGame(CONFIGS, { seed: 42 });
     state = updatePlayer(state, 0 as PlayerId, () => ({
       tricks: [
@@ -112,18 +104,85 @@ describe('calculateScores', () => {
     const scores = calculateScores(state);
     expect(scores[0].trickEndBonus).toBe(10);
   });
+
+  it('trick end bonus: PER_BASIC_COMP counts total (not type count)', () => {
+    let state = createGame(CONFIGS, { seed: 42 });
+    // S3C Skeleton Dance has PER_BASIC_COMP endBonus (famePerUnit: 1)
+    state = updatePlayer(state, 0 as PlayerId, p => ({
+      tricks: [{
+        trickId: 'S3C' as TrickId, symbolIndex: 0 as SymbolIndex,
+        prepared: true, markersOnTrick: 0,
+      }],
+      components: { ...p.components, WOOD: 3, METAL: 2, GLASS: 0, FABRIC: 1 },
+    }));
+    const scores = calculateScores(state);
+    // v4: total count = 3+2+0+1 = 6 (not 3 types)
+    expect(scores[0].trickEndBonus).toBe(6);
+  });
+
+  it('trick end bonus: TRICK_MARKERS_ON_TRICK', () => {
+    let state = createGame(CONFIGS, { seed: 42 });
+    // M3A Aztec Lady: TRICK_MARKERS_ON_TRICK (famePerUnit: 2)
+    state = updatePlayer(state, 0 as PlayerId, () => ({
+      tricks: [
+        { trickId: 'M3A' as TrickId, symbolIndex: 0 as SymbolIndex, prepared: true, markersOnTrick: 3 },
+        { trickId: 'M1A' as TrickId, symbolIndex: 1 as SymbolIndex, prepared: true, markersOnTrick: 2 },
+      ],
+    }));
+    const scores = calculateScores(state);
+    // total markers on tricks = 3+2 = 5, × 2 = 10
+    expect(scores[0].trickEndBonus).toBe(10);
+  });
+
+  it('fame cap: 20 per category', () => {
+    let state = createGame(CONFIGS, { seed: 42 });
+    // Give player extreme shard count to test cap
+    state = updatePlayer(state, 0 as PlayerId, () => ({
+      tricks: [{
+        trickId: 'M3B' as TrickId, symbolIndex: 0 as SymbolIndex,
+        prepared: true, markersOnTrick: 0,
+      }],
+      shards: 25, // 25 × 1 = 25 → capped to 20
+    }));
+    const scores = calculateScores(state);
+    expect(scores[0].trickEndBonus).toBe(20); // capped
+  });
+
+  it('shard bonus capped at 20', () => {
+    let state = createGame(CONFIGS, { seed: 42 });
+    state = updatePlayer(state, 0 as PlayerId, () => ({ shards: 25 }));
+    const scores = calculateScores(state);
+    expect(scores[0].shardBonus).toBe(20);
+  });
+
+  it('coin bonus capped at 20', () => {
+    let state = createGame(CONFIGS, { seed: 42 });
+    state = updatePlayer(state, 0 as PlayerId, () => ({ coins: 100 }));
+    const scores = calculateScores(state);
+    // 100/3 = 33 → capped to 20
+    expect(scores[0].coinBonus).toBe(20);
+  });
 });
 
-describe('applyFinalScoring', () => {
+describe('applyFinalScoring (v4)', () => {
   it('applies scores and determines winner', () => {
     let state = createGame(CONFIGS, { seed: 42 });
     state = { ...state, gameOver: true };
     const result = applyFinalScoring(state);
     expect(result.winner).not.toBeNull();
   });
+
+  it('log includes 특수카드 not 캐릭터', () => {
+    let state = createGame(CONFIGS, { seed: 42 });
+    state = { ...state, gameOver: true };
+    const result = applyFinalScoring(state);
+    const scoreLogs = result.log.filter(l => l.message.includes('최종점수'));
+    expect(scoreLogs.length).toBe(2);
+    expect(scoreLogs[0].message).toContain('특수카드');
+  });
 });
 
-describe('7-round simulation (v3)', () => {
+describe('7-round simulation (v4)', () => {
   it('runs a full game (7 rounds) without errors', () => {
     let state = createGame(CONFIGS, { seed: 42 });
 
@@ -139,7 +198,7 @@ describe('7-round simulation (v3)', () => {
       state = checkAdvertiseComplete(s);
       expect(state.phase).toBe('ASSIGNMENT');
 
-      // v3 ASSIGNMENT — PLACE_ASSIGNMENT_CARD + SUBMIT + REVEAL
+      // v4 ASSIGNMENT — PLACE_ASSIGNMENT_CARD + SUBMIT + REVEAL
       state = assignBothPlayers(state);
       expect(state.phase).toBe('ASSIGNMENT_REVEAL');
 
@@ -160,7 +219,7 @@ describe('7-round simulation (v3)', () => {
       }
       expect(state.phase).toBe('PERFORMANCE');
 
-      // PERFORMANCE — skip (no performances)
+      // PERFORMANCE — skip
       state = advanceToEndTurn(state);
       expect(state.phase).toBe('END_TURN');
 
@@ -173,7 +232,7 @@ describe('7-round simulation (v3)', () => {
       }
     }
 
-    // Game should be over
+    // Game over
     expect(state.gameOver).toBe(true);
     expect(state.phase).toBe('GAME_OVER');
 
@@ -181,5 +240,12 @@ describe('7-round simulation (v3)', () => {
     state = applyFinalScoring(state);
     expect(state.winner).not.toBeNull();
     expect(state.log.length).toBeGreaterThan(0);
+
+    // v4: starting fame 5, verify reasonable final scores
+    const scores = calculateScores(state);
+    for (const score of scores) {
+      expect(score.baseFame).toBeGreaterThanOrEqual(0);
+      expect(score.totalFame).toBeGreaterThanOrEqual(score.baseFame);
+    }
   });
 });

@@ -1,16 +1,17 @@
-// Theater actions: SETUP_TRICK, RESCHEDULE, CHOOSE_WEEKDAY (v3)
-// v3: symbolIndex 기반 마커, 마법사만 Perform, 요일 제한
+// Theater actions: SETUP_TRICK, RESCHEDULE, CHOOSE_WEEKDAY (v4)
+// v4: 링크 보너스 즉시 지급 (레벨 기반), Reschedule는 링크 보너스 없음
 
 import type {
   GameState, GameAction, ValidationError,
-  CardId, PerfCardState, Weekday,
+  CardId, PerfCardState, Weekday, LinkRewardChoice,
 } from '../types';
 import { err } from '../types';
 import { registerHandler } from './registry';
 import { getPlayer } from '../state/selectors';
-import { updatePlayer, addLog } from '../state/helpers';
+import { updatePlayer, adjustFame, adjustCoins, addLog } from '../state/helpers';
 import { getPerfCardDef } from '../data/perf-cards';
-import { MARKERS_PER_SYMBOL } from '../data/constants';
+import { getTrickDef } from '../data/tricks';
+import { LINK_REWARD_BY_LEVEL } from '../data/constants';
 
 type SetupAction = Extract<GameAction, { type: 'SETUP_TRICK' }>;
 type RescheduleAction = Extract<GameAction, { type: 'RESCHEDULE' }>;
@@ -18,6 +19,32 @@ type ChooseWeekdayAction = Extract<GameAction, { type: 'CHOOSE_WEEKDAY' }>;
 
 function findCard(state: GameState, cardId: CardId): PerfCardState | undefined {
   return state.theater.perfCards.find(c => c.cardId === cardId);
+}
+
+/** Count links formed by placing a marker at slotPosition on card */
+function countNewLinks(
+  card: PerfCardState,
+  cardId: CardId,
+  slotPosition: number,
+  placedSymbolIndex: number,
+  placedPlayerId: number,
+): number {
+  const def = getPerfCardDef(cardId);
+  let links = 0;
+  for (const link of def.linkCircles) {
+    const [a, b] = link.between;
+    if (a !== slotPosition && b !== slotPosition) continue;
+    const otherSlot = a === slotPosition ? b : a;
+    const otherMarker = card.slotMarkers[otherSlot];
+    if (!otherMarker) continue;
+    // Link: same category symbol on both sides (same player)
+    if (otherMarker.playerId === placedPlayerId &&
+        otherMarker.symbolIndex === placedSymbolIndex) {
+      // Same symbol = same category → link formed
+      links++;
+    }
+  }
+  return links;
 }
 
 registerHandler<SetupAction>('SETUP_TRICK', {
@@ -67,8 +94,9 @@ registerHandler<SetupAction>('SETUP_TRICK', {
   apply(state, action) {
     const player = getPlayer(state, action.playerId);
     const trickSlot = player.tricks[action.trickIdx];
+    const trickDef = getTrickDef(trickSlot.trickId);
 
-    // v3: symbolIndex 기반 마커 배치
+    // Place marker on performance card
     const newPerfCards = state.theater.perfCards.map(c => {
       if (c.cardId !== action.cardId) return c;
       const newSlots = [...c.slotMarkers];
@@ -92,6 +120,31 @@ registerHandler<SetupAction>('SETUP_TRICK', {
       ),
     };
     s = addLog(s, `${player.name}이(가) 트릭 마커를 카드 ${action.cardId} 슬롯 ${action.slotPosition}에 배치`);
+
+    // v4: 링크 보너스 즉시 지급
+    const updatedCard = s.theater.perfCards.find(c => c.cardId === action.cardId)!;
+    const links = countNewLinks(
+      updatedCard, action.cardId, action.slotPosition,
+      trickSlot.symbolIndex, action.playerId as number,
+    );
+
+    if (links > 0) {
+      const level = trickDef.level;
+      const rewardAmount = LINK_REWARD_BY_LEVEL[level] ?? 1;
+      const choices = action.linkRewardChoices ?? [];
+
+      for (let i = 0; i < links; i++) {
+        const choice: LinkRewardChoice = choices[i] ?? 'FAME';
+        if (choice === 'FAME') {
+          s = adjustFame(s, action.playerId, rewardAmount);
+          s = addLog(s, `${player.name}: 링크 보너스 +${rewardAmount}명성`);
+        } else {
+          s = adjustCoins(s, action.playerId, rewardAmount);
+          s = addLog(s, `${player.name}: 링크 보너스 +${rewardAmount}코인`);
+        }
+      }
+    }
+
     return s;
   },
 });
@@ -111,7 +164,6 @@ registerHandler<RescheduleAction>('RESCHEDULE', {
     if (!toDef.activeSlots.includes(action.toSlot)) errors.push(err('toSlot', '비활성 슬롯'));
     if (toCard.slotMarkers[action.toSlot] !== null) errors.push(err('toSlot', '이미 점유된 슬롯'));
 
-    // v3: 같은 심볼 + 같은 카드 불가
     if (marker && toCard) {
       for (const m of toCard.slotMarkers) {
         if (m && m.playerId === action.playerId && m.symbolIndex === marker.symbolIndex) {
@@ -141,6 +193,7 @@ registerHandler<RescheduleAction>('RESCHEDULE', {
       return c;
     });
 
+    // v4: Reschedule → 링크 보너스 없음
     let s: GameState = { ...state, theater: { ...state.theater, perfCards: newPerfCards } };
     s = addLog(s, `${player.name}이(가) 마커 이동: ${action.fromCardId}[${action.fromSlot}] → ${action.toCardId}[${action.toSlot}]`);
     return s;
@@ -159,13 +212,11 @@ registerHandler<ChooseWeekdayAction>('CHOOSE_WEEKDAY', {
       return errors;
     }
 
-    // v3: 상대가 이미 점유한 요일 불가
     const currentPerformer = state.theater.weekdayPerformers[action.weekday];
     if (currentPerformer !== null && currentPerformer !== action.playerId) {
       errors.push(err('weekday', '상대 플레이어가 이미 해당 요일을 점유'));
     }
 
-    // v3: 같은 플레이어의 극장 캐릭터는 모두 같은 요일이어야 함
     if (player.chosenWeekday !== null && player.chosenWeekday !== action.weekday) {
       errors.push(err('weekday', '이미 다른 요일을 선택함'));
     }
@@ -175,7 +226,6 @@ registerHandler<ChooseWeekdayAction>('CHOOSE_WEEKDAY', {
   apply(state, action) {
     const player = getPlayer(state, action.playerId);
 
-    // v3: weekdayPerformers에 기록
     const newPerformers = {
       ...state.theater.weekdayPerformers,
       [action.weekday]: action.playerId,

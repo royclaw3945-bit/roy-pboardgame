@@ -168,3 +168,14 @@ export function countTotalMarkersOnBoard(state: GameState, playerId: PlayerId): 
   }
   return count;
 }
+
+/** Count total trick markers on trick cards (workshop) for a player */
+export function countTotalMarkersOnTricks(player: PlayerState): number {
+  return player.tricks.reduce((sum, t) => sum + t.markersOnTrick, 0);
+}
+
+/** Count special assignment cards held (unused) by a player — stub, always 0 for now */
+export function countSpecialCards(_player: PlayerState): number {
+  // TODO: track special cards when special card system is implemented
+  return 0;
+}

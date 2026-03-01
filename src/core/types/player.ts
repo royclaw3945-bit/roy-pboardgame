@@ -36,7 +36,6 @@ export interface SymbolMarkerState {
 export interface AssignmentCardState {
   readonly id: AssignmentCardId;
   readonly location: Location;
-  readonly isExpansion: boolean;
 }
 
 // -- Assignment Card Placement (현재 턴 배치) --
@@ -68,6 +67,8 @@ export interface PlayerConfig {
   readonly name: string;
   readonly magicianId: MagicianId;
   readonly isHuman: boolean;
+  readonly startingSpecialist: SpecialistType;
+  readonly startingComponents: readonly ComponentType[];
 }
 
 // -- Player State --

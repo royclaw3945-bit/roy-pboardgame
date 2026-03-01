@@ -56,12 +56,13 @@ const ALL_TRICKS: readonly TrickDef[] = [
   t('M2D','Bullet Catch','총알 잡기','MECHANICAL',2,16,{METAL:2,ROPE:2,OIL:2},2,3,{fame:3,coins:4,shards:0}),
   // Level 3
   t('M3A','Aztec Lady','아즈텍 레이디','MECHANICAL',3,36,{GLASS:2,SAW:1,LOCK:1,GEAR:2},2,3,{fame:5,coins:5,shards:0},
-    {type:'TRICK_MARKERS_ON_PERF',famePerUnit:2,desc:'퍼포먼스 카드 위 트릭마커 1개당 2명성'}),
+    {type:'TRICK_MARKERS_ON_TRICK',famePerUnit:2,desc:'작업장 트릭카드 위 트릭마커 1개당 2명성'}),
   t('M3B','Horror Saws','공포의 톱','MECHANICAL',3,36,{WOOD:3,SAW:2,GEAR:2},2,2,{fame:4,coins:8,shards:0},
     {type:'PER_SHARD',famePerUnit:1,desc:'보유 샤드 1개당 1명성'}),
   t('M3C','Automaton','오토마톤','MECHANICAL',3,36,{METAL:3,OIL:3,GEAR:3},1,1,{fame:7,coins:7,shards:0},
     {type:'PER_L2_TRICK',famePerUnit:4,desc:'보유 레벨2 트릭 1개당 4명성'}),
-  t('M3D','Hellhound','헬하운드','MECHANICAL',3,36,{FABRIC:3,OIL:1,LOCK:2,ANIMAL:2},2,2,{fame:6,coins:5,shards:1}),
+  t('M3D','Hellhound','헬하운드','MECHANICAL',3,36,{FABRIC:3,OIL:1,LOCK:2,ANIMAL:2},2,2,{fame:6,coins:5,shards:1},
+    {type:'PER_SPECIAL_CARD',famePerUnit:2,desc:'미사용 특수 배치카드 1장당 2명성'}),
 
   // === OPTICAL ===
   t('O1A','Enchanted Butterflies','마법 나비','OPTICAL',1,1,{FABRIC:2},1,2,{fame:2,coins:0,shards:0}),

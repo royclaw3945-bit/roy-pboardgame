@@ -77,6 +77,14 @@ interface RerollAction {
   readonly type: 'REROLL';
   readonly playerId: PlayerId;
   readonly diceGroup: 'DAHLGAARD' | 'INN' | 'BANK';
+  readonly dieIndex: number;
+}
+interface SetDieAction {
+  readonly type: 'SET_DIE';
+  readonly playerId: PlayerId;
+  readonly diceGroup: 'DAHLGAARD' | 'INN' | 'BANK';
+  readonly dieIndex: number;
+  readonly desiredFace: string | number;
 }
 interface ChooseDieAction {
   readonly type: 'CHOOSE_DIE';
@@ -121,6 +129,7 @@ interface SetupTrickAction {
   readonly trickIdx: number;
   readonly cardId: CardId;
   readonly slotPosition: SlotPosition;
+  readonly linkRewardChoices?: readonly LinkRewardChoice[];
 }
 interface RescheduleAction {
   readonly type: 'RESCHEDULE';
@@ -193,6 +202,7 @@ export type GameAction =
   | TakeCoinsAction
   | HireAction
   | RerollAction
+  | SetDieAction
   | ChooseDieAction
   | BuyAction
   | BargainAction

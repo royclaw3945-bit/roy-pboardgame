@@ -1,25 +1,27 @@
-// Game initialization — createGame(configs, options) → GameState (v3)
+// Game initialization — createGame(configs, options) → GameState (v4: DA only)
 
 import type {
   GameState, GameConfig, PlayerState, PlayerConfig, CharacterState,
   PlayerId, TrickId, CardId, Location, TrickCategory, Weekday,
   ComponentType, PerfCardState, LocationSlot, SymbolMarkerState,
-  AssignmentPhaseState, PerformancePhaseState,
+  SpecialistType, SpecialistBoard, TrickSlot,
 } from '../types';
 import type { DowntownDice, DarkAlleyState, MarketState, TheaterState } from '../types';
-import { MAGICIANS } from '../data/magicians';
-import { getCategoryTrickIds } from '../data/tricks';
+import { MAGICIANS, getMagicianDef } from '../data/magicians';
+import { getCategoryTrickIds, getTrickDef } from '../data/tricks';
 import { getAllPerfCardIds } from '../data/perf-cards';
 import { createAssignmentCards } from '../data/assignment-cards';
 import {
-  STARTING, DICE_FACES, WEEKDAYS, LOCATION_SLOT_PYRAMID,
-  BASE_ROUNDS, DA_ROUNDS, MAX_ACTIVE_PERF_CARDS,
+  STARTING, DICE_FACES, WEEKDAYS, LOCATION_SLOTS, SLOT_BLOCKS,
+  DA_ROUNDS, MAX_ACTIVE_PERF_CARDS,
 } from '../data/constants';
+import { hasRequiredComponents } from './selectors';
 import { shuffle } from './random';
 
 const LOCATIONS_WITH_SLOTS: readonly Location[] = [
-  'DOWNTOWN', 'MARKET_ROW', 'WORKSHOP', 'THEATER', 'DARK_ALLEY',
+  'DOWNTOWN', 'MARKET_ROW', 'DARK_ALLEY',
 ];
+const LOCATIONS_NO_BLOCK: readonly Location[] = ['WORKSHOP', 'THEATER'];
 
 const ALL_COMPONENTS: readonly ComponentType[] = [
   'WOOD', 'METAL', 'GLASS', 'FABRIC',
@@ -49,8 +51,95 @@ function createInitialSymbols(): readonly SymbolMarkerState[] {
   ];
 }
 
-function createPlayer(config: PlayerConfig, index: number, useDarkAlley: boolean): PlayerState {
-  return {
+function createSpecialistBoard(type: SpecialistType): SpecialistBoard {
+  switch (type) {
+    case 'ENGINEER': return { type: 'ENGINEER', extraTrickSlot: false };
+    case 'MANAGER': return { type: 'MANAGER', extraComponentSlot: false };
+    case 'ASSISTANT': return { type: 'ASSISTANT', freeApprentice: false };
+  }
+}
+
+function createPlayer(
+  config: PlayerConfig, index: number,
+  trickDecks: Record<TrickCategory, readonly TrickId[]>,
+): { player: PlayerState; updatedDecks: Record<TrickCategory, readonly TrickId[]> } {
+  const magician = getMagicianDef(config.magicianId);
+  const spec = config.startingSpecialist;
+
+  // Characters: Magician + Apprentice + starting specialist
+  const characters: CharacterState[] = [
+    createCharacter('MAGICIAN'),
+    createCharacter('APPRENTICE'),
+    createCharacter(spec),
+  ];
+
+  // Specialist bonus: assistant gives extra apprentice
+  if (spec === 'ASSISTANT') {
+    characters.push(createCharacter('APPRENTICE'));
+  }
+
+  // Starting components
+  const components = emptyComponents();
+  for (const comp of config.startingComponents) {
+    components[comp] = Math.min((components[comp] ?? 0) + 1, STARTING.maxComponentsPerType);
+  }
+  // Manager bonus: extra components (coin value 2)
+  // Components already included in config.startingComponents by caller
+
+  // Starting Lv.1 trick from favorite category
+  const favCat = magician.favoriteCategory;
+  const decks = { ...trickDecks };
+  const favDeck = [...decks[favCat]];
+  const lv1Trick = favDeck.find(id => getTrickDef(id).level === 1);
+
+  const tricks: TrickSlot[] = [];
+  const symbols = [...createInitialSymbols()];
+
+  if (lv1Trick) {
+    // Assign symbol 0 to this trick
+    symbols[0] = { assigned: true, trickId: lv1Trick };
+    const trickDef = getTrickDef(lv1Trick);
+
+    // Check free Prepare
+    const tempPlayer = {
+      components: components as Readonly<Record<ComponentType, number>>,
+    } as PlayerState;
+    const canPrepare = hasRequiredComponents(tempPlayer, lv1Trick);
+
+    tricks.push({
+      trickId: lv1Trick,
+      symbolIndex: 0,
+      prepared: canPrepare,
+      markersOnTrick: canPrepare ? trickDef.markerSlots : 0,
+    });
+
+    // Remove from deck
+    decks[favCat] = favDeck.filter(id => id !== lv1Trick);
+  }
+
+  // Engineer bonus: extra Lv.1 trick from any category
+  if (spec === 'ENGINEER') {
+    const categories: TrickCategory[] = ['MECHANICAL', 'OPTICAL', 'ESCAPE', 'SPIRITUAL'];
+    for (const cat of categories) {
+      if (cat === favCat) continue; // try other categories first
+      const deck = [...decks[cat]];
+      const extraTrick = deck.find(id => getTrickDef(id).level === 1);
+      if (extraTrick) {
+        symbols[1] = { assigned: true, trickId: extraTrick };
+        const td = getTrickDef(extraTrick);
+        const tp = { components: components as Readonly<Record<ComponentType, number>> } as PlayerState;
+        const cp = hasRequiredComponents(tp, extraTrick);
+        tricks.push({
+          trickId: extraTrick, symbolIndex: 1,
+          prepared: cp, markersOnTrick: cp ? td.markerSlots : 0,
+        });
+        decks[cat] = deck.filter(id => id !== extraTrick);
+        break;
+      }
+    }
+  }
+
+  const player: PlayerState = {
     id: index as PlayerId,
     name: config.name,
     magicianId: config.magicianId,
@@ -58,30 +147,38 @@ function createPlayer(config: PlayerConfig, index: number, useDarkAlley: boolean
     fame: STARTING.fame,
     coins: STARTING.coins + STARTING.extraCoinsByPosition[index],
     shards: STARTING.shards,
-    tricks: [],
-    components: emptyComponents(),
-    characters: [createCharacter('MAGICIAN'), createCharacter('APPRENTICE')],
-    specialists: [],
-    symbols: createInitialSymbols(),
-    specialistBoards: [],
-    assignmentCards: createAssignmentCards(index, useDarkAlley),
+    tricks,
+    components: components as Readonly<Record<ComponentType, number>>,
+    characters,
+    specialists: [spec],
+    symbols,
+    specialistBoards: [createSpecialistBoard(spec)],
+    assignmentCards: createAssignmentCards(index),
     currentPlacements: [],
     chosenWeekday: null,
     usedAbilityThisTurn: false,
     hasAdvertised: false,
     isHuman: config.isHuman,
   };
+
+  return { player, updatedDecks: decks };
 }
 
 function createLocationSlots(numPlayers: number): Record<Location, readonly LocationSlot[]> {
-  const maxSlots = numPlayers <= 2 ? 3 : numPlayers <= 3 ? 4 : 6;
-  const slotsTemplate = LOCATION_SLOT_PYRAMID.slice(0, maxSlots);
-
+  const blocked = SLOT_BLOCKS[numPlayers] ?? 0;
   const result = {} as Record<Location, LocationSlot[]>;
+
+  // Locations with player-count blocking
   for (const loc of LOCATIONS_WITH_SLOTS) {
-    result[loc] = slotsTemplate.map(s => ({ ...s, occupant: null }));
+    result[loc] = LOCATION_SLOTS.slice(0, LOCATION_SLOTS.length - blocked)
+      .map((s, i) => ({ row: i, apMod: s.apMod, occupant: null }));
   }
-  // MARKET_ROW는 LOCATIONS_WITH_SLOTS에서 이미 생성됨 (중복 제거)
+
+  // Workshop and Theater: always all 4 slots, no blocking
+  for (const loc of LOCATIONS_NO_BLOCK) {
+    result[loc] = LOCATION_SLOTS.map((s, i) => ({ row: i, apMod: s.apMod, occupant: null }));
+  }
+
   return result;
 }
 
@@ -116,14 +213,15 @@ function createPerfCardDeck(counter: number, seed: number, numPlayers: number) {
 }
 
 function createDowntownDice(): DowntownDice {
+  // DA: 2 dice per group (6 total)
   return {
-    DAHLGAARD: [...DICE_FACES.DAHLGAARD],
-    INN: [...DICE_FACES.INN],
-    BANK: [...DICE_FACES.BANK],
+    DAHLGAARD: [DICE_FACES.DAHLGAARD[0], DICE_FACES.DAHLGAARD[1]],
+    INN: [DICE_FACES.INN[0], DICE_FACES.INN[1]],
+    BANK: [DICE_FACES.BANK[0], DICE_FACES.BANK[1]],
     marked: {
-      DAHLGAARD: [false, false, false, false, false, false],
-      INN: [false, false, false, false, false, false],
-      BANK: [false, false, false, false, false, false],
+      DAHLGAARD: [false, false],
+      INN: [false, false],
+      BANK: [false, false],
     },
   };
 }
@@ -152,33 +250,39 @@ function createDarkAlley(): DarkAlleyState {
 
 export function createGame(
   configs: readonly PlayerConfig[],
-  options: { useDarkAlley?: boolean; seed?: number } = {},
+  options: { seed?: number } = {},
 ): GameState {
   const numPlayers = configs.length;
   if (numPlayers < 2 || numPlayers > 4) {
     throw new Error(`Invalid player count: ${numPlayers}. Must be 2-4.`);
   }
 
-  const useDarkAlley = options.useDarkAlley ?? true;
   const seed = options.seed ?? 42;
   let counter = 0;
 
-  const players = configs.map((c, i) => createPlayer(c, i, useDarkAlley));
-
   const { decks, nextCounter: c1 } = createTrickDecks(counter, seed);
   counter = c1;
+
+  // Create players (may consume tricks from decks)
+  let currentDecks = decks;
+  const players: PlayerState[] = [];
+  for (let i = 0; i < configs.length; i++) {
+    const { player, updatedDecks } = createPlayer(configs[i], i, currentDecks);
+    players.push(player);
+    currentDecks = updatedDecks;
+  }
 
   const { activeCards, deck, nextCounter: c2 } = createPerfCardDeck(counter, seed, numPlayers);
   counter = c2;
 
   const initiativeOrder = Array.from({ length: numPlayers }, (_, i) => i);
 
-  const config: GameConfig = { numPlayers, useDarkAlley, seed };
+  const config: GameConfig = { numPlayers, seed };
 
   return {
     config,
     round: 1,
-    maxRounds: useDarkAlley ? DA_ROUNDS : BASE_ROUNDS,
+    maxRounds: DA_ROUNDS,
     phase: 'SETUP',
     players,
     initiativeOrder,
@@ -189,7 +293,7 @@ export function createGame(
     downtownDice: createDowntownDice(),
     market: createMarket(),
     darkAlley: createDarkAlley(),
-    trickDecks: decks,
+    trickDecks: currentDecks,
     locationSlots: createLocationSlots(numPlayers),
     assignmentPhase: null,
     performancePhase: null,

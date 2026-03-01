@@ -1,15 +1,17 @@
-// Stage 1 Tests — data integrity + RNG determinism (v3)
+// Stage 1 Tests — data integrity + RNG determinism (v4: DA only)
 
 import { describe, it, expect } from 'vitest';
 import { TRICKS, getTrickDef, getAllTrickIds, getCategoryTrickIds } from './tricks';
 import { MAGICIANS, getBaseMagicianIds, getAllMagicianIds } from './magicians';
 import { PERF_CARDS, getAllPerfCardIds, getPerfCardIdsByVenue } from './perf-cards';
-import { createAssignmentCards, getBaseCardCount, getExpansionCardCount } from './assignment-cards';
+import { createAssignmentCards, getCardCount } from './assignment-cards';
 import { CHARACTER_DEFS } from './characters';
 import {
-  WEEKDAYS, SLOT_ADJACENCY, LINK_REWARDS,
+  WEEKDAYS, SLOT_ADJACENCY, LINK_REWARD_BY_LEVEL,
   MAX_ACTIVE_PERF_CARDS, COMPONENT_META,
   MARKERS_PER_SYMBOL, SYMBOL_COUNT, SYMBOL_SHAPES,
+  LOCATION_SLOTS, SLOT_BLOCKS, PERFORMER_LINK_BONUS,
+  END_SCORING, STARTING,
 } from './constants';
 import { nextFloat, nextInt, shuffle, pick } from '../state/random';
 import type { TrickId, TrickCategory } from '../types';
@@ -72,10 +74,23 @@ describe('Tricks', () => {
       expect(Object.keys(trick.components).length).toBeGreaterThan(0);
     }
   });
+
+  it('Hellhound has PER_SPECIAL_CARD endBonus', () => {
+    const trick = getTrickDef('M3D' as TrickId);
+    expect(trick.endBonus).not.toBeNull();
+    expect(trick.endBonus!.type).toBe('PER_SPECIAL_CARD');
+    expect(trick.endBonus!.famePerUnit).toBe(2);
+  });
+
+  it('Aztec Lady has TRICK_MARKERS_ON_TRICK endBonus', () => {
+    const trick = getTrickDef('M3A' as TrickId);
+    expect(trick.endBonus).not.toBeNull();
+    expect(trick.endBonus!.type).toBe('TRICK_MARKERS_ON_TRICK');
+  });
 });
 
 describe('Magicians', () => {
-  it('has exactly 8 magicians (v3)', () => {
+  it('has exactly 8 magicians', () => {
     expect(MAGICIANS.size).toBe(8);
   });
 
@@ -136,47 +151,43 @@ describe('Performance Cards', () => {
   });
 });
 
-describe('Assignment Cards (v3: personal)', () => {
-  it('base game creates 9 cards per player', () => {
-    const cards = createAssignmentCards(0, false);
-    expect(cards.length).toBe(9);
-  });
-
-  it('Dark Alley creates 15 cards per player', () => {
-    const cards = createAssignmentCards(0, true);
-    expect(cards.length).toBe(15);
+describe('Assignment Cards (v4: DA only)', () => {
+  it('creates 6 cards per player', () => {
+    const cards = createAssignmentCards(0);
+    expect(cards.length).toBe(6);
   });
 
   it('card IDs include player index', () => {
-    const p0cards = createAssignmentCards(0, false);
-    const p1cards = createAssignmentCards(1, false);
+    const p0cards = createAssignmentCards(0);
+    const p1cards = createAssignmentCards(1);
     expect(p0cards[0].id).toContain('P0');
     expect(p1cards[0].id).toContain('P1');
   });
 
-  it('base game has no DARK_ALLEY location', () => {
-    const cards = createAssignmentCards(0, false);
-    expect(cards.map(c => c.location)).not.toContain('DARK_ALLEY');
-  });
-
-  it('DA expansion includes DARK_ALLEY', () => {
-    const cards = createAssignmentCards(0, true);
+  it('includes DARK_ALLEY location', () => {
+    const cards = createAssignmentCards(0);
     expect(cards.map(c => c.location)).toContain('DARK_ALLEY');
   });
 
+  it('has 2 THEATER, 1 WORKSHOP, 1 MARKET_ROW, 1 DOWNTOWN, 1 DARK_ALLEY', () => {
+    const cards = createAssignmentCards(0);
+    const locs = cards.map(c => c.location);
+    expect(locs.filter(l => l === 'THEATER').length).toBe(2);
+    expect(locs.filter(l => l === 'WORKSHOP').length).toBe(1);
+    expect(locs.filter(l => l === 'MARKET_ROW').length).toBe(1);
+    expect(locs.filter(l => l === 'DOWNTOWN').length).toBe(1);
+    expect(locs.filter(l => l === 'DARK_ALLEY').length).toBe(1);
+  });
+
   it('different players have unique card IDs', () => {
-    const p0 = createAssignmentCards(0, true);
-    const p1 = createAssignmentCards(1, true);
+    const p0 = createAssignmentCards(0);
+    const p1 = createAssignmentCards(1);
     const allIds = [...p0.map(c => c.id), ...p1.map(c => c.id)];
     expect(new Set(allIds).size).toBe(allIds.length);
   });
 
-  it('getBaseCardCount is 9', () => {
-    expect(getBaseCardCount()).toBe(9);
-  });
-
-  it('getExpansionCardCount is 6', () => {
-    expect(getExpansionCardCount()).toBe(6);
+  it('getCardCount is 6', () => {
+    expect(getCardCount()).toBe(6);
   });
 });
 
@@ -194,7 +205,7 @@ describe('Characters', () => {
   });
 });
 
-describe('Constants (v3)', () => {
+describe('Constants (v4)', () => {
   it('has 4 weekdays', () => {
     expect(WEEKDAYS.length).toBe(4);
   });
@@ -215,6 +226,24 @@ describe('Constants (v3)', () => {
     expect(SYMBOL_SHAPES.length).toBe(4);
   });
 
+  it('STARTING fame is 5', () => {
+    expect(STARTING.fame).toBe(5);
+  });
+
+  it('LOCATION_SLOTS has 4 slots', () => {
+    expect(LOCATION_SLOTS.length).toBe(4);
+    expect(LOCATION_SLOTS[0].apMod).toBe(2);
+    expect(LOCATION_SLOTS[1].apMod).toBe(1);
+    expect(LOCATION_SLOTS[2].apMod).toBe(1);
+    expect(LOCATION_SLOTS[3].apMod).toBe(0);
+  });
+
+  it('SLOT_BLOCKS defined for 2/3/4 players', () => {
+    expect(SLOT_BLOCKS[2]).toBe(2);
+    expect(SLOT_BLOCKS[3]).toBe(1);
+    expect(SLOT_BLOCKS[4]).toBe(0);
+  });
+
   it('slot adjacency is symmetric', () => {
     for (const [slot, neighbors] of Object.entries(SLOT_ADJACENCY)) {
       for (const neighbor of neighbors) {
@@ -223,10 +252,19 @@ describe('Constants (v3)', () => {
     }
   });
 
-  it('link rewards are ordered by threshold', () => {
-    for (let i = 1; i < LINK_REWARDS.length; i++) {
-      expect(LINK_REWARDS[i].fameThreshold).toBeGreaterThan(LINK_REWARDS[i - 1].fameThreshold);
-    }
+  it('LINK_REWARD_BY_LEVEL scales with level', () => {
+    expect(LINK_REWARD_BY_LEVEL[1]).toBe(1);
+    expect(LINK_REWARD_BY_LEVEL[2]).toBe(2);
+    expect(LINK_REWARD_BY_LEVEL[3]).toBe(3);
+  });
+
+  it('PERFORMER_LINK_BONUS is 1', () => {
+    expect(PERFORMER_LINK_BONUS).toBe(1);
+  });
+
+  it('END_SCORING has SPECIAL_CARD_FAME and FAME_CAP', () => {
+    expect(END_SCORING.SPECIAL_CARD_FAME).toBe(2);
+    expect(END_SCORING.FAME_CAP).toBe(20);
   });
 
   it('MAX_ACTIVE_PERF_CARDS is 5', () => {

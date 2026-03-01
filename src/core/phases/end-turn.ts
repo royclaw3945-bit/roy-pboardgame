@@ -1,15 +1,27 @@
-// End Turn phase — wages, reset, card cycling, round advance (v3)
+// End Turn phase — wages, reset, card cycling, round advance (v4)
 
-import type { GameState, PerfCardState, Weekday } from '../types';
+import type { GameState, PerfCardState, Weekday, PlayerId } from '../types';
 import { addLog, updatePlayer, adjustFame } from '../state/helpers';
 import { WAGES, WEEKDAYS, CHARACTER_META } from '../data/constants';
 
-/** Pay wages to all characters */
+/** Pay wages — v4: Idle characters exempt, assistant board apprentices exempt */
 export function payWages(state: GameState): GameState {
   let s = state;
   for (const player of state.players) {
     let totalWage = 0;
     for (const char of player.characters) {
+      // v4: Idle = not assigned (placed === false AND assigned === false)
+      if (!char.assigned && !char.placed) continue; // Idle → no wage
+      // v4: assistant board apprentice → exempt
+      // (simplified: check if APPRENTICE and assistant board has freeApprentice)
+      if (char.type === 'APPRENTICE') {
+        const assistantBoard = player.specialistBoards.find(b => b.type === 'ASSISTANT');
+        if (assistantBoard && assistantBoard.freeApprentice) {
+          // One apprentice is free — but only if it's on the board
+          // For now, skip this apprentice's wage
+          continue;
+        }
+      }
       totalWage += CHARACTER_META[char.type].wage;
     }
     if (totalWage > 0) {
@@ -30,21 +42,27 @@ export function payWages(state: GameState): GameState {
   return s;
 }
 
-/** Cycle performance cards — discard oldest, shift, draw new (v3: array-based slotMarkers) */
+/** Cycle performance cards — v4: only discard from round 3+ */
 export function cyclePerfCards(state: GameState): GameState {
   const { perfCards, perfDeck, perfDiscard } = state.theater;
   if (perfCards.length === 0) return state;
 
-  const oldest = perfCards[perfCards.length - 1];
-  const remaining = perfCards.slice(0, -1);
-
-  let newCards = [...remaining];
+  let newCards = [...perfCards];
   let newDeck = [...perfDeck];
-  const newDiscard = [...perfDiscard, oldest.cardId];
+  let newDiscard = [...perfDiscard];
 
+  // v4: Only discard oldest card from round 3+
+  if (state.round >= 3) {
+    const oldest = newCards[newCards.length - 1];
+
+    // v4: Markers on discarded card → supply (just clear them, supply is computed)
+    newCards = newCards.slice(0, -1);
+    newDiscard = [...newDiscard, oldest.cardId];
+  }
+
+  // Draw new card
   if (newDeck.length > 0) {
     const newCardId = newDeck.shift()!;
-    // v3: slotMarkers is array, weekday is null
     const newCard: PerfCardState = {
       cardId: newCardId,
       weekday: null,
@@ -53,7 +71,7 @@ export function cyclePerfCards(state: GameState): GameState {
     newCards = [newCard, ...newCards];
   }
 
-  // v3: Reset weekdayPerformers
+  // Reset weekdayPerformers
   const weekdayPerformers = {} as Record<Weekday, null>;
   for (const day of WEEKDAYS) weekdayPerformers[day] = null;
 

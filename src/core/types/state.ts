@@ -9,7 +9,6 @@ import type {
 
 export interface GameConfig {
   readonly numPlayers: number;
-  readonly useDarkAlley: boolean;
   readonly seed: number;
 }
 

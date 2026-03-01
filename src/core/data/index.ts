@@ -1,4 +1,4 @@
-// Re-export all static data (v3)
+// Re-export all static data (v4: DA only)
 
 export { TRICKS, getTrickDef, getTricksByCategory, getTricksByLevel, getAllTrickIds, getCategoryTrickIds } from './tricks';
 export type { TrickDef, Yields, EndBonus } from './tricks';
@@ -12,16 +12,17 @@ export type { PerfCardDef, LinkCircleDef } from './perf-cards';
 export { CHARACTER_DEFS } from './characters';
 export type { CharacterDef } from './characters';
 
-export { createAssignmentCards, getBaseCardCount, getExpansionCardCount } from './assignment-cards';
+export { createAssignmentCards, getCardCount } from './assignment-cards';
 
 export {
   TRICK_CATEGORY_META, COMPONENT_META, COMPONENT_POOL,
-  LOCATION_META, LOCATION_SLOT_PYRAMID, DICE_FACES,
+  LOCATION_META, LOCATION_SLOTS, SLOT_BLOCKS, DICE_FACES,
   WEEKDAY_MOD, WEEKDAYS, CHARACTER_META,
   STARTING, ADVERTISE_COST, ADVERTISE_FAME,
-  WAGES, BASE_ROUNDS, DA_ROUNDS, HIRE_LIMITS,
+  WAGES, DA_ROUNDS, HIRE_LIMITS,
   SPECIALIST_THEATER_BONUS, VENUE_META, END_SCORING,
-  LINK_REWARDS, MAX_ACTIVE_PERF_CARDS, SLOT_ADJACENCY,
+  LINK_REWARD_BY_LEVEL, PERFORMER_LINK_BONUS,
+  MAX_ACTIVE_PERF_CARDS, SLOT_ADJACENCY,
   MARKERS_PER_SYMBOL, SYMBOL_COUNT,
   SYMBOL_SHAPES, SYMBOL_INDEX_TO_SHAPE,
 } from './constants';
