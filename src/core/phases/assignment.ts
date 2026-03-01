@@ -23,20 +23,26 @@ export function allPlayersAssigned(state: GameState): boolean {
   return state.players.every(p => p.characters.some(c => c.assigned));
 }
 
-/** Build turn queue from assignments — sorted by initiative */
+/** Build turn queue — interleaved round-robin by initiative, characterIdx=-1 (player chooses) */
 export function buildTurnQueue(state: GameState): readonly TurnQueueEntry[] {
-  const queue: TurnQueueEntry[] = [];
-
+  // Count assigned characters per player (initiative order)
+  const playerChars: { playerId: PlayerId; count: number }[] = [];
   for (const playerIdx of state.initiativeOrder) {
     const player = state.players[playerIdx];
+    let count = 0;
     for (const placement of player.currentPlacements) {
-      const card = player.assignmentCards.find(c => c.id === placement.cardId);
-      if (!card) continue;
-      for (const charIdx of placement.characterIndices) {
-        queue.push({
-          playerId: player.id,
-          characterIdx: charIdx,
-        });
+      count += placement.characterIndices.length;
+    }
+    if (count > 0) playerChars.push({ playerId: player.id, count });
+  }
+
+  // Interleave round-robin: each round, each player places 1 character
+  const queue: TurnQueueEntry[] = [];
+  const maxChars = Math.max(...playerChars.map(c => c.count), 0);
+  for (let round = 0; round < maxChars; round++) {
+    for (const { playerId, count } of playerChars) {
+      if (round < count) {
+        queue.push({ playerId, characterIdx: -1 });
       }
     }
   }

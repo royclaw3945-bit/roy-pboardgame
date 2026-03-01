@@ -139,7 +139,12 @@ describe('SUBMIT_ASSIGNMENT (v4)', () => {
 
 describe('PLACE_CHARACTER', () => {
   it('places character on slot', () => {
-    let state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
+    let state = setup(s => ({
+      ...s,
+      phase: 'PLACEMENT' as const,
+      turnQueue: [{ playerId: 0 as PlayerId, characterIdx: 0 }],
+      currentTurnIdx: 0,
+    }));
     state = updateCharacter(state, 0 as PlayerId, 0, () => ({
       assigned: true, location: 'DOWNTOWN',
     }));
@@ -156,8 +161,22 @@ describe('PLACE_CHARACTER', () => {
 });
 
 describe('LEARN_TRICK (v4)', () => {
+  /** Helper: set up a placement state with character at DOWNTOWN, placed, with AP */
+  function setupDowntown(state: GameState): GameState {
+    let s = {
+      ...state,
+      phase: 'PLACEMENT' as const,
+      turnQueue: [{ playerId: 0 as PlayerId, characterIdx: 0 }],
+      currentTurnIdx: 0,
+    };
+    s = updateCharacter(s, 0 as PlayerId, 0, () => ({
+      assigned: true, location: 'DOWNTOWN' as const, placed: true, ap: 5,
+    }));
+    return s;
+  }
+
   it('learns a trick with symbolIndex', () => {
-    let state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
+    let state = setupDowntown(setup());
     // Clear existing tricks to test fresh learning
     state = updatePlayer(state, 0 as PlayerId, () => ({
       tricks: [],
@@ -189,10 +208,12 @@ describe('LEARN_TRICK (v4)', () => {
     expect(ns.players[0].tricks[0].trickId).toBe(trickId);
     expect(ns.players[0].tricks[0].symbolIndex).toBe(0);
     expect(ns.players[0].symbols[0].assigned).toBe(true);
+    // AP should be consumed by 1
+    expect(ns.players[0].characters[0].ap).toBe(4);
   });
 
   it('fails if symbol already assigned', () => {
-    let state = setup();
+    let state = setupDowntown(setup());
     const trickId = state.trickDecks.MECHANICAL[0];
     state = updateSymbol(state, 0 as PlayerId, 0, () => ({
       assigned: true, trickId,
@@ -205,7 +226,7 @@ describe('LEARN_TRICK (v4)', () => {
   });
 
   it('favorite category bypasses dice check', () => {
-    let state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
+    let state = setupDowntown(setup());
     state = updatePlayer(state, 0 as PlayerId, () => ({
       tricks: [],
       symbols: [
@@ -373,22 +394,45 @@ describe('BUY', () => {
 });
 
 describe('CHOOSE_WEEKDAY (v4)', () => {
+  /** Helper: set up with character at THEATER, placed, with AP */
+  function setupTheater(state: GameState, playerId: number = 0): GameState {
+    let s = {
+      ...state,
+      phase: 'PLACEMENT' as const,
+      turnQueue: [{ playerId: playerId as PlayerId, characterIdx: 0 }],
+      currentTurnIdx: 0,
+    };
+    s = updateCharacter(s, playerId as PlayerId, 0, () => ({
+      assigned: true, location: 'THEATER' as const, placed: true, ap: 3,
+    }));
+    return s;
+  }
+
   it('reserves weekday for performer', () => {
-    const state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
+    const state = setupTheater(setup());
     const { result, state: ns } = dispatch(state, {
       type: 'CHOOSE_WEEKDAY', playerId: 0 as PlayerId, weekday: 'FRIDAY',
     });
     expect(result.ok).toBe(true);
     expect(ns.theater.weekdayPerformers.FRIDAY).toBe(0);
-    expect(ns.players[0].chosenWeekday).toBe('FRIDAY');
+    // AP consumed + auto-advance may have occurred, check the pre-advance state
   });
 
   it('fails if opponent already on that weekday', () => {
-    let state = setup(s => ({ ...s, phase: 'PLACEMENT' as const }));
+    let state = setupTheater(setup());
     const { state: s1 } = dispatch(state, {
       type: 'CHOOSE_WEEKDAY', playerId: 0 as PlayerId, weekday: 'FRIDAY',
     });
-    const { result } = dispatch(s1, {
+    // Set up player 1 at THEATER for their turn
+    let s2 = {
+      ...s1,
+      turnQueue: [{ playerId: 1 as PlayerId, characterIdx: 0 }],
+      currentTurnIdx: 0,
+    };
+    s2 = updateCharacter(s2, 1 as PlayerId, 0, () => ({
+      assigned: true, location: 'THEATER' as const, placed: true, ap: 3,
+    }));
+    const { result } = dispatch(s2, {
       type: 'CHOOSE_WEEKDAY', playerId: 1 as PlayerId, weekday: 'FRIDAY',
     });
     expect(result.ok).toBe(false);

@@ -41,6 +41,11 @@ interface RevealAssignmentsAction {
 }
 
 // -- Placement Phase --
+interface SelectCharacterAction {
+  readonly type: 'SELECT_CHARACTER';
+  readonly playerId: PlayerId;
+  readonly characterIdx: number;
+}
 interface PlaceCharacterAction {
   readonly type: 'PLACE_CHARACTER';
   readonly playerId: PlayerId;
@@ -53,6 +58,10 @@ interface PassCharacterAction {
 }
 interface ConvertShardAction {
   readonly type: 'CONVERT_SHARD';
+  readonly playerId: PlayerId;
+}
+interface FinishActionsAction {
+  readonly type: 'FINISH_ACTIONS';
   readonly playerId: PlayerId;
 }
 
@@ -195,9 +204,11 @@ export type GameAction =
   | RemoveAssignmentCardAction
   | SubmitAssignmentAction
   | RevealAssignmentsAction
+  | SelectCharacterAction
   | PlaceCharacterAction
   | PassCharacterAction
   | ConvertShardAction
+  | FinishActionsAction
   | LearnTrickAction
   | TakeCoinsAction
   | HireAction

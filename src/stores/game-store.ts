@@ -24,6 +24,7 @@ interface GameStore {
   finishAdvertise: () => void;
   finishAssignment: () => void;
   nextTurn: () => void;
+  finishActions: () => void;
   finishPerformance: () => void;
   finishRound: () => void;
   applyScoring: () => void;
@@ -71,6 +72,16 @@ export const useGameStore = create<GameStore>()(
         const { state } = get();
         if (!state || state.phase !== 'PLACEMENT') return;
         set({ state: advanceTurn(state) });
+      },
+
+      finishActions: () => {
+        const { state } = get();
+        if (!state || state.phase !== 'PLACEMENT') return;
+        // Dispatch FINISH_ACTIONS for current turn player
+        const turn = state.turnQueue[state.currentTurnIdx];
+        if (!turn) return;
+        const result = coreDispatch(state, { type: 'FINISH_ACTIONS', playerId: turn.playerId });
+        set({ state: result.state, lastResult: result.result });
       },
 
       finishPerformance: () => {
