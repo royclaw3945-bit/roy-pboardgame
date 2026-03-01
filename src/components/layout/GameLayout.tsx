@@ -9,18 +9,47 @@ import { ModalRouter } from '../modals/ModalRouter';
 
 export function GameLayout() {
   return (
-    <div className="flex min-h-screen flex-col gap-2 p-2">
-      <TopBar />
-      <div className="flex flex-1 gap-2">
-        <div className="flex-1 flex flex-col gap-2">
-          <BoardCenter />
-          <ActionPanel />
-        </div>
-        <div className="w-80 flex flex-col gap-2">
-          <PlayerBoard />
-          <GameLog />
+    <div
+      className="game-layout-wrapper"
+      style={{
+        minHeight: '100vh',
+        backgroundImage: 'url(/img/bg_magoria.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* Dark overlay */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(10, 10, 26, 0.82)',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <TopBar />
+        <div className="game-layout">
+          <aside className="left-panel">
+            <PlayerBoard />
+          </aside>
+          <main className="center-panel">
+            <BoardCenter />
+          </main>
+          <aside className="right-panel">
+            <div className="action-panel">
+              <ActionPanel />
+            </div>
+            <div className="log-panel">
+              <GameLog />
+            </div>
+          </aside>
         </div>
       </div>
+
       <ModalRouter />
     </div>
   );

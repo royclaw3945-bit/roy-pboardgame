@@ -2,6 +2,7 @@
 
 import { useGameStore } from '@/stores/game-store';
 import { WEEKDAY_MOD } from '@/core/data/constants';
+import { GameIcon } from '../shared/GameIcon';
 import type { Weekday } from '@/core/types';
 
 interface Props {
@@ -14,22 +15,36 @@ export function WeekdayColumn({ weekday }: Props) {
 
   const mod = WEEKDAY_MOD[weekday];
   const performer = state.theater.weekdayPerformers[weekday];
+  const player = performer !== null
+    ? state.players.find(p => p.id === performer)
+    : null;
 
   return (
-    <div className="rounded bg-[var(--bg-dark)] p-1.5 text-center">
-      <div className="text-xs font-bold">{mod.name}</div>
-      <div className="text-[8px] text-[var(--text-secondary)]">
-        {mod.fameMod >= 0 ? '+' : ''}{mod.fameMod}F
-        {mod.coinMod >= 0 ? ' +' : ' '}{mod.coinMod}C
+    <div className="weekday-col">
+      <h4>{mod.name}</h4>
+      <div style={{
+        display: 'flex', gap: 4, justifyContent: 'center',
+        fontSize: '0.7rem', marginBottom: 6,
+      }}>
+        <span style={{ color: mod.fameMod >= 0 ? 'var(--gold-primary)' : 'var(--red)' }}>
+          <GameIcon type="fame" size="xs" /> {mod.fameMod >= 0 ? '+' : ''}{mod.fameMod}
+        </span>
+        <span style={{ color: mod.coinMod >= 0 ? 'var(--gold-primary)' : 'var(--red)' }}>
+          <GameIcon type="coins" size="xs" /> {mod.coinMod >= 0 ? '+' : ''}{mod.coinMod}
+        </span>
       </div>
-      <div className="mt-1 min-h-[20px]">
-        {performer !== null && (
-          <div
-            className="text-xs font-bold"
-            style={{ color: state.players.find(p => p.id === performer)?.color }}
-          >
-            P{(performer as number) + 1}
+      <div className={`weekday-slot ${performer !== null ? 'occupied' : ''}`}>
+        {player ? (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+          }}>
+            <GameIcon type="MAGICIAN" size="sm" color={player.color} />
+            <span style={{ color: player.color, fontSize: '0.68rem', fontWeight: 700 }}>
+              {player.name}
+            </span>
           </div>
+        ) : (
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>빈 슬롯</span>
         )}
       </div>
     </div>

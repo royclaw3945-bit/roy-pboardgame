@@ -4,21 +4,23 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/stores/game-store';
 import { MAGICIANS } from '@/core/data/magicians';
+import { GameIcon } from '@/components/shared/GameIcon';
 import type { MagicianId, SpecialistType, ComponentType, PlayerConfig } from '@/core/types';
 
 const MAGICIAN_LIST = [...MAGICIANS.values()];
-const SPECIALIST_OPTIONS: { id: SpecialistType; label: string }[] = [
-  { id: 'ENGINEER', label: '기술자' },
-  { id: 'MANAGER', label: '매니저' },
-  { id: 'ASSISTANT', label: '어시스턴트' },
+const SPECIALIST_OPTIONS: { id: SpecialistType; label: string; icon: string }[] = [
+  { id: 'ENGINEER', label: '기술자', icon: 'ENGINEER' },
+  { id: 'MANAGER', label: '매니저', icon: 'MANAGER' },
+  { id: 'ASSISTANT', label: '어시스턴트', icon: 'ASSISTANT' },
 ];
 
-/** Default starting components by specialist (coin value 2 each) */
 const DEFAULT_COMPONENTS: Record<SpecialistType, readonly ComponentType[]> = {
   ENGINEER: ['METAL', 'METAL'],
   MANAGER: ['FABRIC', 'FABRIC'],
   ASSISTANT: ['WOOD', 'WOOD'],
 };
+
+const PLAYER_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308'];
 
 interface PlayerSetup {
   name: string;
@@ -62,91 +64,194 @@ export default function SetupPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-6 p-8">
-      <h1 className="text-3xl font-bold text-[var(--gold)]">게임 설정</h1>
+    <main style={{
+      minHeight: '100vh',
+      padding: 30,
+      background: 'radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.06) 0%, transparent 60%), var(--bg-darkest)',
+    }}>
+      <div className="setup-container" style={{ maxWidth: 900, margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 30 }}>
+          <h1 style={{
+            fontFamily: 'var(--font-heading)',
+            fontSize: '1.8rem',
+            color: 'var(--purple-light)',
+          }}>
+            게임 설정
+          </h1>
+          <p style={{ color: 'var(--text-dim)', marginTop: 8 }}>
+            마술사를 선택하고 게임을 시작하세요
+          </p>
+        </div>
 
-      <div className="flex gap-4">
-        <label className="text-[var(--text-secondary)]">플레이어 수:</label>
-        {[2, 3, 4].map((n) => (
-          <button
-            key={n}
-            onClick={() => setNumPlayers(n)}
-            className={`rounded px-4 py-2 ${
-              numPlayers === n
-                ? 'bg-[var(--purple)] text-white'
-                : 'bg-[var(--bg-card)]'
-            }`}
-          >
-            {n}명
+        {/* Player count */}
+        <div style={{ textAlign: 'center', marginBottom: 24, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-heading)' }}>플레이어 수:</span>
+          {[2, 3, 4].map((n) => (
+            <button
+              key={n}
+              onClick={() => setNumPlayers(n)}
+              className={`btn ${numPlayers === n ? 'btn-primary' : ''}`}
+              style={{ minWidth: 48 }}
+            >
+              {n}명
+            </button>
+          ))}
+        </div>
+
+        {/* Player cards */}
+        <div className="player-setup-grid">
+          {players.slice(0, numPlayers).map((p, idx) => {
+            const mag = MAGICIANS.get(p.magicianId)!;
+            const color = PLAYER_COLORS[idx];
+            return (
+              <div
+                key={idx}
+                className="player-setup-card active"
+                style={{
+                  borderColor: color,
+                  boxShadow: `0 0 12px ${color}30`,
+                }}
+              >
+                {/* Magician portrait header */}
+                <div style={{
+                  position: 'relative', height: 80, margin: '-20px -20px 12px -20px',
+                  overflow: 'hidden', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+                }}>
+                  <img
+                    src={mag.img.replace('_portrait', '')}
+                    alt={mag.nameKo}
+                    style={{
+                      width: '100%', height: '100%', objectFit: 'cover',
+                      filter: 'brightness(0.35)',
+                    }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                  <div style={{
+                    position: 'absolute', bottom: 8, left: 12,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <img
+                      src={mag.img}
+                      alt={mag.nameKo}
+                      className="magician-portrait"
+                      style={{ width: 44, height: 44, borderColor: color }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <span style={{
+                      fontFamily: 'var(--font-heading)', fontWeight: 700,
+                      color, fontSize: '0.95rem',
+                    }}>
+                      P{idx + 1}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <label style={{ fontFamily: 'var(--font-heading)', letterSpacing: 0.3, fontSize: '0.85rem', color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>
+                  이름
+                </label>
+                <input
+                  type="text"
+                  value={p.name}
+                  onChange={(e) => updatePlayer(idx, { name: e.target.value })}
+                  style={{
+                    width: '100%', padding: '8px 12px',
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)', color: 'var(--text)',
+                    fontSize: '0.95rem', fontFamily: 'var(--font-body)',
+                  }}
+                />
+
+                {/* Magician selection */}
+                <label style={{ fontFamily: 'var(--font-heading)', letterSpacing: 0.3, fontSize: '0.85rem', color: 'var(--text-dim)', display: 'block', marginTop: 10, marginBottom: 4 }}>
+                  마술사
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {MAGICIAN_LIST.map((m) => {
+                    const isSelected = p.magicianId === m.id;
+                    const isUsed = usedMagicians.includes(m.id) && !isSelected;
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => !isUsed && updatePlayer(idx, { magicianId: m.id })}
+                        disabled={isUsed}
+                        style={{
+                          width: 44, height: 44, borderRadius: '50%', padding: 0,
+                          border: `2px solid ${isSelected ? 'var(--gold-primary)' : isUsed ? 'var(--border)' : m.color}`,
+                          overflow: 'hidden', cursor: isUsed ? 'not-allowed' : 'pointer',
+                          opacity: isUsed ? 0.3 : 1,
+                          boxShadow: isSelected ? `0 0 12px var(--gold-glow)` : 'none',
+                          transition: 'all 0.2s',
+                          background: 'var(--bg-card)',
+                        }}
+                        title={m.nameKo}
+                      >
+                        <img
+                          src={m.img}
+                          alt={m.nameKo}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            const el = e.target as HTMLImageElement;
+                            el.style.display = 'none';
+                            el.parentElement!.textContent = m.nameKo[0];
+                          }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: mag.color, marginTop: 4, fontFamily: 'var(--font-heading)' }}>
+                  {mag.nameKo}
+                </div>
+
+                {/* Specialist */}
+                <label style={{ fontFamily: 'var(--font-heading)', letterSpacing: 0.3, fontSize: '0.85rem', color: 'var(--text-dim)', display: 'block', marginTop: 10, marginBottom: 4 }}>
+                  시작 전문가
+                </label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {SPECIALIST_OPTIONS.map((s) => {
+                    const isSelected = p.startingSpecialist === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => updatePlayer(idx, { startingSpecialist: s.id })}
+                        className={`btn btn-sm ${isSelected ? 'btn-primary' : ''}`}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                      >
+                        <GameIcon type={s.icon} size="xs" color={isSelected ? '#fff' : undefined} />
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Human toggle */}
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
+                  cursor: 'pointer', fontSize: '0.85rem',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={p.isHuman}
+                    onChange={(e) => updatePlayer(idx, { isHuman: e.target.checked })}
+                    style={{ accentColor: 'var(--purple)' }}
+                  />
+                  <span>사람</span>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Start button */}
+        <div style={{ textAlign: 'center', marginTop: 24 }}>
+          <button onClick={startGame} className="btn btn-primary btn-lg">
+            <GameIcon type="MAGICIAN" size="md" color="#fff" />
+            게임 시작!
           </button>
-        ))}
+        </div>
       </div>
-
-      <div className="flex flex-col gap-4">
-        {players.slice(0, numPlayers).map((p, idx) => (
-          <div
-            key={idx}
-            className="flex items-center gap-4 rounded-lg bg-[var(--bg-card)] p-4"
-          >
-            <input
-              type="text"
-              value={p.name}
-              onChange={(e) => updatePlayer(idx, { name: e.target.value })}
-              className="rounded bg-[var(--bg-dark)] px-3 py-2 text-white"
-            />
-            <select
-              value={p.magicianId}
-              onChange={(e) =>
-                updatePlayer(idx, { magicianId: e.target.value as MagicianId })
-              }
-              className="rounded bg-[var(--bg-dark)] px-3 py-2 text-white"
-            >
-              {MAGICIAN_LIST.map((m) => (
-                <option
-                  key={m.id}
-                  value={m.id}
-                  disabled={
-                    usedMagicians.includes(m.id) && p.magicianId !== m.id
-                  }
-                >
-                  {m.nameKo}
-                </option>
-              ))}
-            </select>
-            <select
-              value={p.startingSpecialist}
-              onChange={(e) =>
-                updatePlayer(idx, { startingSpecialist: e.target.value as SpecialistType })
-              }
-              className="rounded bg-[var(--bg-dark)] px-3 py-2 text-white"
-            >
-              {SPECIALIST_OPTIONS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <label className="flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={p.isHuman}
-                onChange={(e) =>
-                  updatePlayer(idx, { isHuman: e.target.checked })
-                }
-              />
-              <span className="text-sm">사람</span>
-            </label>
-          </div>
-        ))}
-      </div>
-
-      <button
-        onClick={startGame}
-        className="rounded-lg bg-[var(--green)] px-8 py-3 text-xl font-bold
-                   transition-colors hover:bg-green-600"
-      >
-        게임 시작!
-      </button>
     </main>
   );
 }

@@ -3,6 +3,22 @@
 import { useGameStore } from '@/stores/game-store';
 import { useUIStore } from '@/stores/ui-store';
 import { PHASE_CONFIG } from '@/core/phases/registry';
+import { ResourceBadge } from '../shared/ResourceBadge';
+import { getMagicianDef } from '@/core/data/magicians';
+import type { Phase } from '@/core/types';
+
+const PHASE_ORDER: Phase[] = [
+  'ADVERTISE', 'ASSIGNMENT', 'ASSIGNMENT_REVEAL', 'PLACEMENT', 'PERFORMANCE', 'END_TURN',
+];
+
+const PHASE_SHORT: Record<string, string> = {
+  ADVERTISE: '광고',
+  ASSIGNMENT: '배정',
+  ASSIGNMENT_REVEAL: '공개',
+  PLACEMENT: '배치',
+  PERFORMANCE: '공연',
+  END_TURN: '종료',
+};
 
 export function TopBar() {
   const state = useGameStore((s) => s.state);
@@ -13,41 +29,110 @@ export function TopBar() {
   if (!state) return null;
 
   const phase = PHASE_CONFIG[state.phase];
+  const currentPhaseIdx = PHASE_ORDER.indexOf(state.phase);
 
   return (
-    <header className="flex items-center justify-between bg-[var(--bg-card)] px-4 py-2 rounded-lg">
-      <div className="flex items-center gap-3">
-        <span className="text-[var(--gold)] font-bold text-lg">
-          R{state.round}/{state.maxRounds}
-        </span>
-        <span className="bg-[var(--purple)] px-3 py-1 rounded text-sm font-bold">
-          {phase.nameKo}
-        </span>
+    <header className="top-bar">
+      {/* Left: Round + Phase */}
+      <div className="round-info">
+        <span className="round-badge">R{state.round}/{state.maxRounds}</span>
+        <span className="phase-badge">{phase.nameKo}</span>
       </div>
 
-      <div className="flex gap-1">
-        {state.players.map((p, i) => (
-          <button
-            key={i}
-            onClick={() => setPlayerTab(i)}
-            className={`flex items-center gap-1 rounded px-3 py-1.5 text-sm transition-all
-              ${selectedTab === i ? 'ring-2 ring-white/50' : 'opacity-70 hover:opacity-100'}`}
-            style={{ backgroundColor: p.color + '33', borderColor: p.color }}
-          >
-            <span className="font-bold" style={{ color: p.color }}>{p.name}</span>
-            <span className="text-xs text-[var(--text-secondary)]">
-              {p.fame}F {p.coins}C {p.shards}S
-            </span>
-          </button>
-        ))}
+      {/* Center: Phase Stepper */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+        {PHASE_ORDER.map((p, i) => {
+          const isActive = p === state.phase;
+          const isPast = i < currentPhaseIdx;
+          return (
+            <div key={p} style={{ display: 'flex', alignItems: 'center' }}>
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  fontFamily: 'var(--font-heading)',
+                  background: isActive
+                    ? 'linear-gradient(135deg, var(--purple), #6d28d9)'
+                    : isPast
+                    ? 'var(--purple-glow)'
+                    : 'var(--bg-card)',
+                  border: `2px solid ${isActive ? 'var(--purple-light)' : isPast ? 'var(--purple)' : 'var(--border)'}`,
+                  color: isActive ? '#fff' : isPast ? 'var(--purple-light)' : 'var(--text-dim)',
+                  boxShadow: isActive ? '0 0 10px var(--purple-glow)' : 'none',
+                  transition: 'all 0.3s ease',
+                }}
+                title={PHASE_CONFIG[p].nameKo}
+              >
+                {PHASE_SHORT[p]?.[0] ?? ''}
+              </div>
+              {i < PHASE_ORDER.length - 1 && (
+                <div
+                  style={{
+                    width: 12,
+                    height: 2,
+                    background: isPast ? 'var(--purple)' : 'var(--border)',
+                    transition: 'background 0.3s ease',
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <button
-        onClick={() => openModal('SAVE_LOAD')}
-        className="rounded bg-[var(--bg-panel)] px-3 py-1.5 text-sm hover:bg-[var(--bg-dark)]"
-      >
-        저장/불러오기
-      </button>
+      {/* Right: Player Tabs */}
+      <div className="player-tabs">
+        {state.players.map((p, i) => {
+          const mag = getMagicianDef(p.magicianId);
+          return (
+            <button
+              key={i}
+              onClick={() => setPlayerTab(i)}
+              className={`player-tab ${selectedTab === i ? 'active' : ''}`}
+              style={{
+                borderColor: selectedTab === i ? p.color : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              {/* Portrait thumbnail */}
+              <img
+                src={mag.img}
+                alt={mag.nameKo}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: `2px solid ${p.color}`,
+                }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              <span style={{ color: selectedTab === i ? p.color : undefined, fontWeight: 700 }}>
+                {p.name}
+              </span>
+              <ResourceBadge type="fame" value={p.fame} />
+            </button>
+          );
+        })}
+
+        <button
+          onClick={() => openModal('SAVE_LOAD')}
+          className="btn btn-sm"
+          style={{ marginLeft: 8 }}
+        >
+          저장
+        </button>
+      </div>
     </header>
   );
 }

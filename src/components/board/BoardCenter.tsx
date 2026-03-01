@@ -11,12 +11,10 @@ export function BoardCenter() {
   if (!state) return null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <PhaseBanner />
-      <div className="grid grid-cols-2 gap-2">
-        <LocationsGrid />
-        <TheaterSection />
-      </div>
+      <LocationsGrid />
+      <TheaterSection />
       <FameTrack />
     </div>
   );

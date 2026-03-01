@@ -1,6 +1,8 @@
 'use client';
 
 import { useGameStore } from '@/stores/game-store';
+import { getMagicianDef } from '@/core/data/magicians';
+import { GameIcon } from '../shared/GameIcon';
 
 export function FameTrack() {
   const state = useGameStore((s) => s.state);
@@ -9,27 +11,44 @@ export function FameTrack() {
   const maxFame = Math.max(...state.players.map((p) => p.fame), 50);
 
   return (
-    <div className="rounded-lg bg-[var(--bg-card)] p-2">
-      <h3 className="mb-1 text-xs font-bold text-[var(--text-secondary)]">명성 트랙</h3>
-      <div className="flex flex-col gap-1">
-        {state.players.map((p) => (
-          <div key={p.id as number} className="flex items-center gap-2">
-            <span className="w-16 text-xs font-bold" style={{ color: p.color }}>
-              {p.name}
-            </span>
-            <div className="flex-1 h-4 bg-[var(--bg-dark)] rounded overflow-hidden">
-              <div
-                className="h-full rounded transition-all duration-300"
+    <div className="fame-track">
+      <h4>
+        <GameIcon type="fame" size="sm" /> 명성 트랙
+      </h4>
+      {state.players.map((p) => {
+        const mag = getMagicianDef(p.magicianId);
+        return (
+          <div key={p.id as number} className="fame-row">
+            <div className="fame-name" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <img
+                src={mag.img}
+                alt={p.name}
                 style={{
-                  width: `${(p.fame / maxFame) * 100}%`,
-                  backgroundColor: p.color,
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: `1.5px solid ${p.color}`,
+                }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              <span style={{ color: p.color }}>{p.name}</span>
+            </div>
+            <div className="fame-bar-bg">
+              <div
+                className="fame-bar"
+                style={{
+                  width: `${Math.min((p.fame / maxFame) * 100, 100)}%`,
+                  background: `linear-gradient(90deg, ${p.color}, ${p.color}88)`,
                 }}
               />
             </div>
-            <span className="w-8 text-right text-xs font-bold">{p.fame}</span>
+            <span className="fame-val">{p.fame}</span>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
