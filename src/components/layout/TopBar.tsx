@@ -5,6 +5,8 @@ import { useUIStore } from '@/stores/ui-store';
 import { PHASE_CONFIG } from '@/core/phases/registry';
 import { ResourceBadge } from '../shared/ResourceBadge';
 import { getMagicianDef } from '@/core/data/magicians';
+import { Undo2, Redo2 } from 'lucide-react';
+import { useStore } from 'zustand';
 import type { Phase } from '@/core/types';
 
 const PHASE_ORDER: Phase[] = [
@@ -25,6 +27,7 @@ export function TopBar() {
   const openModal = useUIStore((s) => s.openModal);
   const setPlayerTab = useUIStore((s) => s.setPlayerTab);
   const selectedTab = useUIStore((s) => s.selectedPlayerTab);
+  const { undo, redo, pastStates, futureStates } = useStore(useGameStore.temporal);
 
   if (!state) return null;
 
@@ -86,8 +89,27 @@ export function TopBar() {
         })}
       </div>
 
-      {/* Right: Player Tabs */}
+      {/* Right: Undo/Redo + Player Tabs */}
       <div className="player-tabs">
+        <button
+          onClick={() => undo()}
+          disabled={pastStates.length === 0}
+          className="btn btn-sm"
+          style={{ padding: '4px 8px', opacity: pastStates.length === 0 ? 0.3 : 1 }}
+          title="되돌리기 (Undo)"
+        >
+          <Undo2 size={14} />
+        </button>
+        <button
+          onClick={() => redo()}
+          disabled={futureStates.length === 0}
+          className="btn btn-sm"
+          style={{ padding: '4px 8px', opacity: futureStates.length === 0 ? 0.3 : 1 }}
+          title="다시하기 (Redo)"
+        >
+          <Redo2 size={14} />
+        </button>
+        <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
         {state.players.map((p, i) => {
           const mag = getMagicianDef(p.magicianId);
           return (

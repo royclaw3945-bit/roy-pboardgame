@@ -165,8 +165,11 @@ export function PlayerBoard() {
               const trick = getTrickDef(slot.trickId);
               const catMeta = TRICK_CATEGORY_META[trick.category];
               const shape = SYMBOL_INDEX_TO_SHAPE[slot.symbolIndex];
+              const y = trick.yields;
+              const comps = Object.entries(trick.components) as [ComponentType, number][];
               return (
                 <div key={i} className={`trick-item ${trick.category.toLowerCase()}`}>
+                  {/* Row 1: Name + Level */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ color: catMeta.color, fontSize: '0.8rem' }}>
@@ -176,6 +179,43 @@ export function PlayerBoard() {
                     </div>
                     <span className="trick-level">Lv.{trick.level}</span>
                   </div>
+
+                  {/* Row 2: Yields (performance rewards) */}
+                  <div style={{
+                    display: 'flex', gap: 8, marginTop: 4, fontSize: '0.7rem',
+                    padding: '3px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: 4,
+                  }}>
+                    {y.fame > 0 && (
+                      <span style={{ color: 'var(--gold-primary)' }}>
+                        <GameIcon type="fame" size="xs" /> {y.fame}
+                      </span>
+                    )}
+                    {y.coins > 0 && (
+                      <span style={{ color: 'var(--gold-primary)' }}>
+                        <GameIcon type="coins" size="xs" /> {y.coins}
+                      </span>
+                    )}
+                    {y.shards > 0 && (
+                      <span style={{ color: 'var(--cyan-light)' }}>
+                        <GameIcon type="shards" size="xs" /> {y.shards}
+                      </span>
+                    )}
+                    <span style={{ marginLeft: 'auto', color: 'var(--text-dim)' }}>
+                      필요: {comps.map(([c, n]) => `${COMPONENT_META[c].name}${n}`).join(' ')}
+                    </span>
+                  </div>
+
+                  {/* Row 3: End bonus (Lv.3 only) */}
+                  {trick.endBonus && (
+                    <div style={{
+                      fontSize: '0.65rem', color: 'var(--purple-light)', marginTop: 3,
+                      fontStyle: 'italic',
+                    }}>
+                      종료: {trick.endBonus.desc}
+                    </div>
+                  )}
+
+                  {/* Row 4: Markers + Status */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                     <div className="trick-markers">
                       {Array.from({ length: trick.markerSlots }, (_, j) => (
