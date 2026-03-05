@@ -2,7 +2,7 @@
 
 import type {
   GameState, PlayerState, PlayerId, TrickId, CardId,
-  TrickCategory, SlotPosition, SymbolIndex,
+  TrickCategory, SlotPosition, SymbolIndex, ComponentType,
 } from '../types';
 import type { PerfCardState, TrickMarker } from '../types';
 import { getTrickDef } from '../data/tricks';
@@ -84,14 +84,31 @@ export function getPlayerTrickDefs(player: PlayerState) {
   return player.tricks.map(slot => getTrickDef(slot.trickId));
 }
 
-/** Check if player has required components for a trick (v3: validation only, no consume) */
+/** Get effective component count including Manager multi-slot bonus (+1 per slot) */
+export function getEffectiveComponentCount(
+  player: PlayerState,
+  comp: ComponentType,
+): number {
+  let count = player.components[comp] ?? 0;
+  // Manager multi-component slots: each slot with this component adds +1
+  for (const board of (player.specialistBoards ?? [])) {
+    if (board.type === 'MANAGER') {
+      for (const slot of board.multiSlots) {
+        if (slot === comp) count++;
+      }
+    }
+  }
+  return count;
+}
+
+/** Check if player has required components for a trick (includes Manager multi-slot bonus) */
 export function hasRequiredComponents(
   player: PlayerState,
   trickId: TrickId,
 ): boolean {
   const trick = getTrickDef(trickId);
   for (const [comp, needed] of Object.entries(trick.components)) {
-    if ((player.components[comp as keyof typeof player.components] ?? 0) < (needed ?? 0)) {
+    if (getEffectiveComponentCount(player, comp as ComponentType) < (needed ?? 0)) {
       return false;
     }
   }

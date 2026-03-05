@@ -88,7 +88,7 @@
 /* ---- Main Game Layout Grid ---- */
 .game-layout {
   display: grid;
-  grid-template-columns: 300px 1fr 300px;
+  grid-template-columns: 320px 1fr 330px;
   grid-template-rows: 1fr;
   gap: 0;
   height: calc(100vh - 48px);
@@ -105,17 +105,18 @@
 
 .panel-section { margin-bottom: 16px; }
 .panel-section-title {
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
   font-family: var(--font-heading);
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 /* ---- Center Panel ---- */
@@ -152,12 +153,13 @@
 
 .action-group { margin-bottom: 16px; }
 .action-group-title {
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   color: var(--text-dim);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
   font-family: var(--font-heading);
+  font-weight: 700;
 }
 
 /* ---- Log Panel ---- */

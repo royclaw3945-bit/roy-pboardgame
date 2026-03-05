@@ -10,12 +10,24 @@ import { GameIcon } from '../shared/GameIcon';
 
 export function ActionPanel() {
   const state = useGameStore((s) => s.state);
+  const lastError = useGameStore((s) => s.lastError);
   if (!state) return null;
 
   const phase = PHASE_CONFIG[state.phase];
 
   return (
     <div>
+      {/* Error toast */}
+      {lastError && (
+        <div style={{
+          padding: '8px 12px', marginBottom: 8,
+          background: 'rgba(255,80,80,0.15)', border: '1px solid var(--red)',
+          borderRadius: 'var(--radius)', fontSize: '0.78rem', color: '#ff6b6b',
+        }}>
+          {lastError}
+        </div>
+      )}
+
       {/* Phase header */}
       <h3 className="action-panel-title" style={{
         display: 'flex', alignItems: 'center', gap: 8,
@@ -49,11 +61,14 @@ export function ActionPanel() {
 function PerformanceActions() {
   const finishPerformance = useGameStore((s) => s.finishPerformance);
   return (
-    <div>
-      <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginBottom: 12 }}>
-        공연이 진행 중입니다.
+    <div style={{ textAlign: 'center', padding: '20px 0' }}>
+      <div style={{ fontSize: '2rem', marginBottom: 8 }}>
+        <GameIcon type="THEATER" size="lg" color="var(--loc-theater)" />
+      </div>
+      <p style={{ fontSize: '0.95rem', color: 'var(--text)', marginBottom: 16, fontFamily: 'var(--font-heading)' }}>
+        공연 진행 중
       </p>
-      <button onClick={finishPerformance} className="btn btn-primary">
+      <button onClick={finishPerformance} className="btn btn-primary btn-lg" style={{ width: '100%' }}>
         <GameIcon type="THEATER" size="sm" color="#fff" />
         공연 완료
       </button>
@@ -64,11 +79,11 @@ function PerformanceActions() {
 function EndTurnActions() {
   const finishRound = useGameStore((s) => s.finishRound);
   return (
-    <div>
-      <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginBottom: 12 }}>
-        라운드가 종료되었습니다.
+    <div style={{ textAlign: 'center', padding: '20px 0' }}>
+      <p style={{ fontSize: '0.95rem', color: 'var(--text)', marginBottom: 16, fontFamily: 'var(--font-heading)' }}>
+        라운드 종료
       </p>
-      <button onClick={finishRound} className="btn btn-primary">
+      <button onClick={finishRound} className="btn btn-primary btn-lg" style={{ width: '100%' }}>
         다음 라운드
       </button>
     </div>

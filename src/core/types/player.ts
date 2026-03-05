@@ -3,7 +3,7 @@
 import type {
   PlayerId, MagicianId, CharacterType, SpecialistType,
   TrickId, ComponentType, Location, SymbolIndex, Weekday,
-  AssignmentCardId,
+  AssignmentCardId, SpecialCardDefId,
 } from './base';
 
 // -- Character --
@@ -16,6 +16,8 @@ export interface CharacterState {
   readonly slotIndex: number | null;
   readonly slotApMod: number;
   readonly shardConverted: boolean;
+  /** DA: 이 캐릭터가 Draw First Card를 이미 사용했는지 (캐릭터당 1회) */
+  readonly usedDrawFirstCard: boolean;
 }
 
 // -- Trick Slot (v3: symbolIndex로 식별, 마커 유한 리소스) --
@@ -32,16 +34,24 @@ export interface SymbolMarkerState {
   readonly trickId: TrickId | null;
 }
 
-// -- Assignment Card (v3: 개인 소유) --
+// -- Assignment Card (v5: 영구+특수 통합) --
 export interface AssignmentCardState {
   readonly id: AssignmentCardId;
   readonly location: Location;
+  /** PERMANENT = 영구 6장, SPECIAL = 뒷골목에서 획득 */
+  readonly kind: 'PERMANENT' | 'SPECIAL';
+  /** 특수카드 정의 ID (kind='SPECIAL'일 때만) */
+  readonly specialCardDefId?: SpecialCardDefId;
 }
 
-// -- Assignment Card Placement (현재 턴 배치) --
+// -- Assignment Card Placement (v5: 특수카드 보너스 포함) --
 export interface AssignmentCardPlacement {
   readonly cardId: AssignmentCardId;
   readonly characterIndices: readonly number[];
+  /** 특수카드 보너스 사용 여부 */
+  readonly usedSpecialBonus: boolean;
+  /** 보너스 타입 선택: PRINTED=카드 효과, EXTRA_AP=+1AP, NONE=미사용 */
+  readonly chosenBonusType: 'PRINTED' | 'EXTRA_AP' | 'NONE';
 }
 
 // -- Specialist Extension Board --
@@ -52,7 +62,8 @@ export interface EngineerBoard {
 
 export interface ManagerBoard {
   readonly type: 'MANAGER';
-  readonly extraComponentSlot: boolean;
+  /** Multi Component slots (2 slots): components here count as +1 */
+  readonly multiSlots: readonly (ComponentType | null)[];
 }
 
 export interface AssistantBoard {
@@ -69,6 +80,11 @@ export interface PlayerConfig {
   readonly isHuman: boolean;
   readonly startingSpecialist: SpecialistType;
   readonly startingComponents: readonly ComponentType[];
+  readonly startingTrickId?: TrickId;
+  /** Engineer bonus: extra Lv.1 trick from any category */
+  readonly engineerBonusTrickId?: TrickId;
+  /** Manager bonus: extra components (coin value 2) */
+  readonly managerBonusComponents?: readonly ComponentType[];
 }
 
 // -- Player State --

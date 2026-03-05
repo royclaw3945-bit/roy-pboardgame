@@ -5,6 +5,7 @@ export type {
   ComponentType, ComponentTier, CharacterType, SpecialistType,
   MagicianId, Venue, SlotPosition, DiceGroup,
   TrickId, PlayerId, CardId, AssignmentCardId,
+  SpecialCardDefId, ProphecyTokenId,
   SymbolIndex, SymbolShape, LinkRewardChoice, DaAbilityId,
   EndBonusType,
 } from './base';
@@ -17,9 +18,10 @@ export type {
 } from './player';
 
 export type {
-  TrickMarker, PerfCardState, TheaterState,
+  TrickMarker, PerfCardState, TheaterWeekdaySlot, TheaterState,
   DahlgaardFace, InnFace, BankFace, DowntownDice,
-  MarketState, SpecialCard, DarkAlleyState,
+  MarketState, SpecialCardDef, SpecialCardEffectType,
+  DarkAlleyState, ProphecyState,
   LocationSlotDef, LocationSlot, TurnQueueEntry, LogEntry,
 } from './board';
 
@@ -32,5 +34,6 @@ export type {
 export { success, failure, err } from './result';
 
 export type {
-  GameConfig, AssignmentPhaseState, PerformancePhaseState, GameState,
+  GameConfig, AssignmentPhaseState, PerformancePhaseState,
+  GameState,
 } from './state';

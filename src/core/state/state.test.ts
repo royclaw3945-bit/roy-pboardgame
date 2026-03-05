@@ -164,10 +164,14 @@ describe('createGame (v4: DA only)', () => {
     expect(s2.locationSlots.DARK_ALLEY.length).toBe(2);
   });
 
-  it('location slots: WORKSHOP and THEATER always 4', () => {
+  it('location slots: WORKSHOP always 4, THEATER uses weekdaySlots', () => {
     const s2 = createGame(P2_CONFIGS, { seed: 1 });
     expect(s2.locationSlots.WORKSHOP.length).toBe(4);
-    expect(s2.locationSlots.THEATER.length).toBe(4);
+    // Theater: locationSlots is empty, uses theater.weekdaySlots instead
+    expect(s2.locationSlots.THEATER.length).toBe(0);
+    expect(Object.keys(s2.theater.weekdaySlots).length).toBe(4);
+    // 2p: 1 backstage slot per weekday
+    expect(s2.theater.weekdaySlots.THURSDAY.backstage.length).toBe(1);
   });
 
   it('location slots: 4p has all 4 slots on DOWNTOWN', () => {

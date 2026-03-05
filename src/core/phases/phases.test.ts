@@ -25,7 +25,7 @@ function setup(): GameState {
 
 /** Helper: assign characters using v4 PLACE_ASSIGNMENT_CARD flow */
 function assignBothPlayers(state: GameState): GameState {
-  let s = { ...state, phase: 'ASSIGNMENT' as const };
+  let s: GameState = { ...state, phase: 'ASSIGNMENT' as const };
   s = initAssignmentPhase(s);
 
   // Player 0: place card for DOWNTOWN with magician
@@ -158,9 +158,8 @@ describe('assignment phase (v4)', () => {
 
 describe('placement phase', () => {
   it('advanceTurn increments index', () => {
-    let state = setup();
-    state = {
-      ...state,
+    const state: GameState = {
+      ...setup(),
       phase: 'PLACEMENT' as const,
       turnQueue: [
         { playerId: 0 as PlayerId, characterIdx: 0 },
@@ -174,9 +173,8 @@ describe('placement phase', () => {
   });
 
   it('advanceTurn transitions to PERFORMANCE when queue done', () => {
-    let state = setup();
-    state = {
-      ...state,
+    const state: GameState = {
+      ...setup(),
       phase: 'PLACEMENT' as const,
       turnQueue: [{ playerId: 0 as PlayerId, characterIdx: 0 }],
       currentTurnIdx: 0,

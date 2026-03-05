@@ -183,6 +183,7 @@ registerHandler<HireAction>('HIRE', {
       characters: [...p.characters, {
         type, ap: 0, assigned: false, location: null,
         placed: false, slotIndex: null, slotApMod: 0, shardConverted: false,
+        usedDrawFirstCard: false,
       }],
       specialists: type !== 'APPRENTICE'
         ? [...p.specialists, type] as typeof p.specialists

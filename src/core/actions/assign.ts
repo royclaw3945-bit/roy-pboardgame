@@ -55,6 +55,8 @@ registerHandler<PlaceCardAction>('PLACE_ASSIGNMENT_CARD', {
     const placement: AssignmentCardPlacement = {
       cardId: action.cardId,
       characterIndices: action.characterIndices,
+      usedSpecialBonus: false,
+      chosenBonusType: 'NONE',
     };
     return updatePlayer(state, action.playerId, p => ({
       currentPlacements: [...p.currentPlacements, placement],

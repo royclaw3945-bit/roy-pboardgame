@@ -1,6 +1,6 @@
 // End Turn phase — wages, reset, card cycling, round advance (v4)
 
-import type { GameState, PerfCardState, Weekday, PlayerId } from '../types';
+import type { GameState, PerfCardState, Weekday, PlayerId, TheaterWeekdaySlot } from '../types';
 import { addLog, updatePlayer, adjustFame } from '../state/helpers';
 import { WAGES, WEEKDAYS, CHARACTER_META } from '../data/constants';
 
@@ -71,9 +71,17 @@ export function cyclePerfCards(state: GameState): GameState {
     newCards = [newCard, ...newCards];
   }
 
-  // Reset weekdayPerformers
+  // Reset weekdayPerformers and weekdaySlots
   const weekdayPerformers = {} as Record<Weekday, null>;
-  for (const day of WEEKDAYS) weekdayPerformers[day] = null;
+  const weekdaySlots = {} as Record<Weekday, TheaterWeekdaySlot>;
+  for (const day of WEEKDAYS) {
+    weekdayPerformers[day] = null;
+    const existing = state.theater.weekdaySlots[day];
+    weekdaySlots[day] = {
+      backstage: existing.backstage.map(bs => ({ ...bs, occupant: null })),
+      performSlot: { occupant: null },
+    };
+  }
 
   return {
     ...state,
@@ -83,6 +91,7 @@ export function cyclePerfCards(state: GameState): GameState {
       perfDeck: newDeck,
       perfDiscard: newDiscard,
       weekdayPerformers,
+      weekdaySlots,
     },
   };
 }
@@ -96,10 +105,26 @@ function resetLocations(state: GameState): GameState {
   return { ...state, locationSlots: newSlots };
 }
 
+/** Cycle market: orderArea → buyArea, reset quickOrderSlot */
+function cycleMarket(state: GameState): GameState {
+  const { buyArea, orderArea, quickOrderSlot } = state.market;
+  // Orders arrive: move orderArea items to buyArea
+  const newBuyArea = [...buyArea, ...orderArea];
+  return {
+    ...state,
+    market: {
+      buyArea: newBuyArea,
+      orderArea: [],
+      quickOrderSlot: null, // Quick order returns to supply
+    },
+  };
+}
+
 /** Execute full end-of-turn sequence */
 export function executeEndTurn(state: GameState): GameState {
   let s = state;
   s = payWages(s);
+  s = cycleMarket(s);
   s = cyclePerfCards(s);
   s = resetLocations(s);
 
@@ -109,7 +134,7 @@ export function executeEndTurn(state: GameState): GameState {
     s = addLog(s, '게임 종료!');
   } else {
     s = { ...s, phase: 'SETUP', round: nextRound };
-    s = addLog(s, `라운드 ${s.round - 1} 종료`);
+    s = addLog(s, `라운드 ${s.round - 1} 종료 → 라운드 ${s.round} 시작 준비`);
   }
 
   return s;

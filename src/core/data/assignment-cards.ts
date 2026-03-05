@@ -23,6 +23,7 @@ export function createAssignmentCards(
   return DA_CARDS.map((def, i) => ({
     id: `P${playerIdx}_AC${i}` as AssignmentCardId,
     location: def.location,
+    kind: 'PERMANENT' as const,
   }));
 }
 

@@ -22,7 +22,7 @@ const CONFIGS: readonly PlayerConfig[] = [
 
 /** Helper: v4 assignment — both players place DOWNTOWN card with magician */
 function assignBothPlayers(state: GameState): GameState {
-  let s = { ...state, phase: 'ASSIGNMENT' as const };
+  let s: GameState = { ...state, phase: 'ASSIGNMENT' as const };
   s = initAssignmentPhase(s);
 
   // Player 0

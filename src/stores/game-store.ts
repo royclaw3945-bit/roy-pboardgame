@@ -9,13 +9,14 @@ import { executeSetup } from '../core/phases/setup';
 import { checkAdvertiseComplete } from '../core/phases/advertise';
 import { advanceToPlacement } from '../core/phases/assignment';
 import { advanceTurn } from '../core/phases/placement';
-import { advanceToEndTurn } from '../core/phases/performance';
+import { executePerformance } from '../core/phases/performance';
 import { executeEndTurn } from '../core/phases/end-turn';
 import { applyFinalScoring } from '../core/scoring';
 
 interface GameStore {
   state: GameState | null;
   lastResult: ActionResult | null;
+  lastError: string | null;
 
   // Actions
   newGame: (configs: readonly PlayerConfig[], options?: { seed?: number }) => void;
@@ -36,6 +37,7 @@ export const useGameStore = create<GameStore>()(
     (set, get) => ({
       state: null,
       lastResult: null,
+      lastError: null,
 
       newGame: (configs, options) => {
         const state = createGame(configs, options);
@@ -46,7 +48,13 @@ export const useGameStore = create<GameStore>()(
         const { state } = get();
         if (!state) return null;
         const result = coreDispatch(state, action);
-        set({ state: result.state, lastResult: result.result });
+        if (!result.result.ok) {
+          const msgs = result.result.errors?.map(e => e.message).join(', ') ?? '알 수 없는 오류';
+          console.warn(`[dispatch FAIL] ${action.type}:`, msgs);
+          set({ lastResult: result.result, lastError: `${action.type}: ${msgs}` });
+        } else {
+          set({ state: result.state, lastResult: result.result, lastError: null });
+        }
         return result;
       },
 
@@ -87,7 +95,7 @@ export const useGameStore = create<GameStore>()(
       finishPerformance: () => {
         const { state } = get();
         if (!state || state.phase !== 'PERFORMANCE') return;
-        set({ state: advanceToEndTurn(state) });
+        set({ state: executePerformance(state) });
       },
 
       finishRound: () => {

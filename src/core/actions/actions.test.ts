@@ -5,7 +5,7 @@ import { dispatch } from '../dispatch';
 import { createGame } from '../state/init';
 import { updatePlayer, updateCharacter, updateTrick, updateSymbol } from '../state/helpers';
 import { getTrickDef } from '../data/tricks';
-import type { PlayerId, TrickId, CardId, PlayerConfig, GameState, SlotPosition, SymbolIndex, AssignmentCardId } from '../types';
+import type { PlayerId, TrickId, CardId, PlayerConfig, GameState, SlotPosition, SymbolIndex, AssignmentCardId, TurnQueueEntry } from '../types';
 
 const CONFIGS: readonly PlayerConfig[] = [
   { name: 'Alice', magicianId: 'MECHANIKER', isHuman: true,
@@ -142,7 +142,7 @@ describe('PLACE_CHARACTER', () => {
     let state = setup(s => ({
       ...s,
       phase: 'PLACEMENT' as const,
-      turnQueue: [{ playerId: 0 as PlayerId, characterIdx: 0 }],
+      turnQueue: [{ playerId: 0 as PlayerId, characterIdx: 0 }] as readonly TurnQueueEntry[],
       currentTurnIdx: 0,
     }));
     state = updateCharacter(state, 0 as PlayerId, 0, () => ({
@@ -163,10 +163,10 @@ describe('PLACE_CHARACTER', () => {
 describe('LEARN_TRICK (v4)', () => {
   /** Helper: set up a placement state with character at DOWNTOWN, placed, with AP */
   function setupDowntown(state: GameState): GameState {
-    let s = {
+    let s: GameState = {
       ...state,
       phase: 'PLACEMENT' as const,
-      turnQueue: [{ playerId: 0 as PlayerId, characterIdx: 0 }],
+      turnQueue: [{ playerId: 0 as PlayerId, characterIdx: 0 }] as readonly TurnQueueEntry[],
       currentTurnIdx: 0,
     };
     s = updateCharacter(s, 0 as PlayerId, 0, () => ({
@@ -208,8 +208,8 @@ describe('LEARN_TRICK (v4)', () => {
     expect(ns.players[0].tricks[0].trickId).toBe(trickId);
     expect(ns.players[0].tricks[0].symbolIndex).toBe(0);
     expect(ns.players[0].symbols[0].assigned).toBe(true);
-    // AP should be consumed by 1
-    expect(ns.players[0].characters[0].ap).toBe(4);
+    // AP should be consumed by 3 (rulebook: Downtown main action)
+    expect(ns.players[0].characters[0].ap).toBe(2);
   });
 
   it('fails if symbol already assigned', () => {
@@ -364,7 +364,7 @@ describe('CONVERT_SHARD', () => {
   it('converts shard to +1 AP', () => {
     let state = setup(s => ({
       ...s, phase: 'PLACEMENT' as const,
-      turnQueue: [{ playerId: 0 as PlayerId, characterIdx: 0 }],
+      turnQueue: [{ playerId: 0 as PlayerId, characterIdx: 0 }] as readonly TurnQueueEntry[],
       currentTurnIdx: 0,
     }));
     state = updateCharacter(state, 0 as PlayerId, 0, () => ({
@@ -380,26 +380,25 @@ describe('CONVERT_SHARD', () => {
 });
 
 describe('BUY', () => {
-  it('buys component from market', () => {
+  it('buys component from market buyArea', () => {
     let state = setup();
-    state = { ...state, market: { ...state.market, stock: ['WOOD', 'METAL'] } };
+    state = { ...state, market: { ...state.market, buyArea: ['WOOD', 'METAL'], orderArea: [], quickOrderSlot: null } };
     const { result, state: ns } = dispatch(state, {
-      type: 'BUY', playerId: 0 as PlayerId, componentType: 'WOOD',
+      type: 'BUY', playerId: 0 as PlayerId, componentType: 'WOOD', bargainAP: 0,
     });
     expect(result.ok).toBe(true);
     expect(ns.players[0].components.WOOD).toBe(1);
     expect(ns.players[0].coins).toBe(state.players[0].coins - 1);
-    expect(ns.market.stock).toEqual(['METAL']);
   });
 });
 
 describe('CHOOSE_WEEKDAY (v4)', () => {
   /** Helper: set up with character at THEATER, placed, with AP */
   function setupTheater(state: GameState, playerId: number = 0): GameState {
-    let s = {
+    let s: GameState = {
       ...state,
       phase: 'PLACEMENT' as const,
-      turnQueue: [{ playerId: playerId as PlayerId, characterIdx: 0 }],
+      turnQueue: [{ playerId: playerId as PlayerId, characterIdx: 0 }] as readonly TurnQueueEntry[],
       currentTurnIdx: 0,
     };
     s = updateCharacter(s, playerId as PlayerId, 0, () => ({
@@ -424,9 +423,9 @@ describe('CHOOSE_WEEKDAY (v4)', () => {
       type: 'CHOOSE_WEEKDAY', playerId: 0 as PlayerId, weekday: 'FRIDAY',
     });
     // Set up player 1 at THEATER for their turn
-    let s2 = {
+    let s2: GameState = {
       ...s1,
-      turnQueue: [{ playerId: 1 as PlayerId, characterIdx: 0 }],
+      turnQueue: [{ playerId: 1 as PlayerId, characterIdx: 0 }] as readonly TurnQueueEntry[],
       currentTurnIdx: 0,
     };
     s2 = updateCharacter(s2, 1 as PlayerId, 0, () => ({

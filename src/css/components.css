@@ -124,9 +124,9 @@
 /* ---- Trick Selection Grid ---- */
 .trick-select-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 10px;
-  margin: 16px 0;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 8px 0;
 }
 .trick-select-item {
   background: var(--bg-secondary);
@@ -139,17 +139,18 @@
 .trick-select-item:hover {
   border-color: var(--purple);
   box-shadow: 0 0 10px var(--purple-glow);
-  transform: translateY(-2px);
+  transform: translateX(3px);
 }
 .trick-select-item.selected {
   border-color: var(--purple-light);
   background: rgba(124, 58, 237, 0.1);
   box-shadow: 0 0 16px var(--purple-glow);
 }
-.trick-select-item .name { font-weight: 700; font-size: 0.9rem; font-family: var(--font-heading); color: var(--text-bright); }
-.trick-select-item .category { font-size: 0.75rem; }
-.trick-select-item .components { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
-.trick-select-item .yields { font-size: 0.75rem; color: var(--green); margin-top: 4px; }
+.trick-select-item.disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.trick-select-item .name { font-weight: 700; font-size: 0.95rem; font-family: var(--font-heading); color: var(--text-bright); }
+.trick-select-item .category { font-size: 0.8rem; }
+.trick-select-item .components { font-size: 0.8rem; color: var(--text-dim); margin-top: 6px; }
+.trick-select-item .yields { font-size: 0.8rem; color: var(--green); margin-top: 4px; font-weight: 600; }
 
 /* ---- Component Selection ---- */
 .component-select { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
@@ -221,14 +222,17 @@
 .confirm-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
 
 /* ---- Category Tags ---- */
-.category-list { display: flex; gap: 12px; flex-wrap: wrap; }
+.category-list { display: flex; gap: 8px; flex-wrap: wrap; }
 .category-list span {
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: var(--radius);
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   font-family: var(--font-heading);
+  cursor: pointer;
+  transition: all 0.2s;
 }
+.category-list span:hover { transform: scale(1.05); }
 .cat-mechanical { background: rgba(249, 115, 22, 0.15); color: var(--mechanical); border: 1px solid rgba(249, 115, 22, 0.3); }
 .cat-optical { background: rgba(168, 85, 247, 0.15); color: var(--optical); border: 1px solid rgba(168, 85, 247, 0.3); }
 .cat-escape { background: rgba(34, 197, 94, 0.15); color: var(--escape); border: 1px solid rgba(34, 197, 94, 0.3); }

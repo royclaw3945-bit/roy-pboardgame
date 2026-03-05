@@ -3,9 +3,9 @@
 import type {
   PlayerId, TrickId, CardId, SlotPosition, AssignmentCardId,
   Location, ComponentType, TrickCategory, Weekday, SymbolIndex,
-  LinkRewardChoice, DaAbilityId,
+  LinkRewardChoice, DaAbilityId, SpecialCardDefId,
+  SpecialistType,
 } from './base';
-import type { SpecialistType } from './base';
 
 // -- Advertise Phase --
 interface AdvertiseAction {
@@ -51,6 +51,10 @@ interface PlaceCharacterAction {
   readonly playerId: PlayerId;
   readonly characterIdx: number;
   readonly slotIndex: number;
+  /** 극장 전용: 배치 요일 */
+  readonly weekday?: Weekday;
+  /** 극장 전용: 'BACKSTAGE' | 'PERFORM' */
+  readonly theaterSlotType?: 'BACKSTAGE' | 'PERFORM';
 }
 interface PassCharacterAction {
   readonly type: 'PASS_CHARACTER';
@@ -102,16 +106,13 @@ interface ChooseDieAction {
   readonly dieIndex: number;
 }
 
-// -- Market Actions --
+// -- Market Actions (v5: BARGAIN을 BUY에 통합) --
 interface BuyAction {
   readonly type: 'BUY';
   readonly playerId: PlayerId;
   readonly componentType: ComponentType;
-}
-interface BargainAction {
-  readonly type: 'BARGAIN';
-  readonly playerId: PlayerId;
-  readonly componentType: ComponentType;
+  /** Bargain으로 사용한 추가 AP (각 1AP당 총 가격 1코인 할인, 최소 1코인) */
+  readonly bargainAP: number;
 }
 interface OrderAction {
   readonly type: 'ORDER';
@@ -124,11 +125,28 @@ interface QuickOrderAction {
   readonly componentType: ComponentType;
 }
 
-// -- Workshop Actions --
+// -- Workshop Actions (v5: Move 액션 추가) --
 interface PrepareAction {
   readonly type: 'PREPARE';
   readonly playerId: PlayerId;
   readonly trickIdx: number;
+}
+interface MoveTrickAction {
+  readonly type: 'MOVE_TRICK';
+  readonly playerId: PlayerId;
+  readonly fromIdx: number;
+  readonly toEngineerSlot: boolean;
+}
+interface MoveComponentAction {
+  readonly type: 'MOVE_COMPONENT';
+  readonly playerId: PlayerId;
+  readonly componentType: ComponentType;
+  readonly managerSlotIdx: number; // 0 | 1
+}
+interface MoveApprenticeAction {
+  readonly type: 'MOVE_APPRENTICE';
+  readonly playerId: PlayerId;
+  readonly apprenticeIdx: number;
 }
 
 // -- Theater Actions --
@@ -154,15 +172,20 @@ interface ChooseWeekdayAction {
   readonly weekday: Weekday;
 }
 
-// -- Dark Alley Actions --
-interface DrawSpecialAction {
-  readonly type: 'DRAW_SPECIAL';
+// -- Dark Alley Actions (v5: 2장 뽑기 + 선택 분리) --
+interface DrawCardsAction {
+  readonly type: 'DRAW_CARDS';
   readonly playerId: PlayerId;
+  readonly deckLocation: Location; // 어느 장소 덱에서 뽑을지
+}
+interface ChooseCardAction {
+  readonly type: 'CHOOSE_CARD';
+  readonly playerId: PlayerId;
+  readonly chosenCardDefId: SpecialCardDefId;
 }
 interface FortuneTellingAction {
   readonly type: 'FORTUNE_TELLING';
   readonly playerId: PlayerId;
-  readonly category: TrickCategory;
 }
 
 // -- Performance Phase (v3: 링크 보상 선택 분리) --
@@ -216,14 +239,17 @@ export type GameAction =
   | SetDieAction
   | ChooseDieAction
   | BuyAction
-  | BargainAction
   | OrderAction
   | QuickOrderAction
   | PrepareAction
+  | MoveTrickAction
+  | MoveComponentAction
+  | MoveApprenticeAction
   | SetupTrickAction
   | RescheduleAction
   | ChooseWeekdayAction
-  | DrawSpecialAction
+  | DrawCardsAction
+  | ChooseCardAction
   | FortuneTellingAction
   | ChoosePerfCardAction
   | ChooseLinkRewardAction

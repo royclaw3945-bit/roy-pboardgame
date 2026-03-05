@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/stores/game-store';
-import { MAGICIANS } from '@/core/data/magicians';
+import { MAGICIANS, getMagicianDef } from '@/core/data/magicians';
+import { getTricksByCategory } from '@/core/data/tricks';
+import { COMPONENT_META, TRICK_CATEGORY_META } from '@/core/data/constants';
 import { GameIcon } from '@/components/shared/GameIcon';
-import type { MagicianId, SpecialistType, ComponentType, PlayerConfig } from '@/core/types';
+import type { MagicianId, SpecialistType, ComponentType, PlayerConfig, TrickId } from '@/core/types';
 
 const MAGICIAN_LIST = [...MAGICIANS.values()];
 const SPECIALIST_OPTIONS: { id: SpecialistType; label: string; icon: string }[] = [
@@ -14,11 +16,13 @@ const SPECIALIST_OPTIONS: { id: SpecialistType; label: string; icon: string }[] 
   { id: 'ASSISTANT', label: '어시스턴트', icon: 'ASSISTANT' },
 ];
 
-const DEFAULT_COMPONENTS: Record<SpecialistType, readonly ComponentType[]> = {
-  ENGINEER: ['METAL', 'METAL'],
-  MANAGER: ['FABRIC', 'FABRIC'],
-  ASSISTANT: ['WOOD', 'WOOD'],
-};
+/** Components selectable at setup (coin value 1 or 2, total must = 2) */
+const BASIC_COMPONENTS: ComponentType[] = ['WOOD', 'METAL', 'GLASS', 'FABRIC'];
+const ADVANCED_COMPONENTS: ComponentType[] = ['ROPE', 'OIL', 'SAW', 'ANIMAL'];
+
+function getComponentCoinValue(comps: ComponentType[]): number {
+  return comps.reduce((sum, c) => sum + COMPONENT_META[c].cost, 0);
+}
 
 const PLAYER_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308'];
 
@@ -27,6 +31,10 @@ interface PlayerSetup {
   magicianId: MagicianId;
   isHuman: boolean;
   startingSpecialist: SpecialistType;
+  startingTrickId: TrickId | null;
+  startingComponents: ComponentType[];
+  engineerBonusTrickId: TrickId | null;
+  managerBonusComponents: ComponentType[];
 }
 
 export default function SetupPage() {
@@ -34,10 +42,10 @@ export default function SetupPage() {
   const newGame = useGameStore((s) => s.newGame);
   const [numPlayers, setNumPlayers] = useState(2);
   const [players, setPlayers] = useState<PlayerSetup[]>([
-    { name: 'Player 1', magicianId: 'MECHANIKER', isHuman: true, startingSpecialist: 'ENGINEER' },
-    { name: 'Player 2', magicianId: 'OPTICIAN', isHuman: false, startingSpecialist: 'MANAGER' },
-    { name: 'Player 3', magicianId: 'ESCAPIST', isHuman: false, startingSpecialist: 'ASSISTANT' },
-    { name: 'Player 4', magicianId: 'SPIRITUALIST', isHuman: false, startingSpecialist: 'ENGINEER' },
+    { name: 'Player 1', magicianId: 'MECHANIKER', isHuman: true, startingSpecialist: 'ENGINEER', startingTrickId: null, startingComponents: ['METAL', 'METAL'], engineerBonusTrickId: null, managerBonusComponents: [] },
+    { name: 'Player 2', magicianId: 'OPTICIAN', isHuman: false, startingSpecialist: 'MANAGER', startingTrickId: null, startingComponents: ['FABRIC', 'FABRIC'], engineerBonusTrickId: null, managerBonusComponents: ['FABRIC', 'FABRIC'] },
+    { name: 'Player 3', magicianId: 'ESCAPIST', isHuman: false, startingSpecialist: 'ASSISTANT', startingTrickId: null, startingComponents: ['WOOD', 'WOOD'], engineerBonusTrickId: null, managerBonusComponents: [] },
+    { name: 'Player 4', magicianId: 'SPIRITUALIST', isHuman: false, startingSpecialist: 'ENGINEER', startingTrickId: null, startingComponents: ['METAL', 'METAL'], engineerBonusTrickId: null, managerBonusComponents: [] },
   ]);
 
   const usedMagicians = players.slice(0, numPlayers).map((p) => p.magicianId);
@@ -56,7 +64,14 @@ export default function SetupPage() {
         magicianId: p.magicianId,
         isHuman: p.isHuman,
         startingSpecialist: p.startingSpecialist,
-        startingComponents: DEFAULT_COMPONENTS[p.startingSpecialist],
+        startingComponents: p.startingComponents.length > 0
+          ? p.startingComponents
+          : ['WOOD', 'WOOD'] as ComponentType[],
+        ...(p.startingTrickId ? { startingTrickId: p.startingTrickId } : {}),
+        ...(p.startingSpecialist === 'ENGINEER' && p.engineerBonusTrickId
+          ? { engineerBonusTrickId: p.engineerBonusTrickId } : {}),
+        ...(p.startingSpecialist === 'MANAGER' && p.managerBonusComponents.length > 0
+          ? { managerBonusComponents: p.managerBonusComponents } : {}),
       }));
     const seed = Math.floor(Math.random() * 1000000);
     newGame(configs, { seed });
@@ -215,7 +230,11 @@ export default function SetupPage() {
                     return (
                       <button
                         key={s.id}
-                        onClick={() => updatePlayer(idx, { startingSpecialist: s.id })}
+                        onClick={() => updatePlayer(idx, {
+                          startingSpecialist: s.id,
+                          engineerBonusTrickId: null,
+                          managerBonusComponents: [],
+                        })}
                         className={`btn btn-sm ${isSelected ? 'btn-primary' : ''}`}
                         style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                       >
@@ -225,6 +244,35 @@ export default function SetupPage() {
                     );
                   })}
                 </div>
+
+                {/* Specialist bonus info */}
+                <SpecialistBonusSection
+                  specialist={p.startingSpecialist}
+                  magicianId={p.magicianId}
+                  engineerBonusTrickId={p.engineerBonusTrickId}
+                  managerBonusComponents={p.managerBonusComponents}
+                  onEngineerTrickSelect={(id) => updatePlayer(idx, { engineerBonusTrickId: id })}
+                  onManagerComponentsSelect={(comps) => updatePlayer(idx, { managerBonusComponents: comps })}
+                />
+
+                {/* Starting Trick */}
+                <label style={{ fontFamily: 'var(--font-heading)', letterSpacing: 0.3, fontSize: '0.85rem', color: 'var(--text-dim)', display: 'block', marginTop: 10, marginBottom: 4 }}>
+                  시작 트릭 (Lv.1, 선호 카테고리)
+                </label>
+                <StartingTrickSelector
+                  magicianId={p.magicianId}
+                  selected={p.startingTrickId}
+                  onSelect={(id) => updatePlayer(idx, { startingTrickId: id })}
+                />
+
+                {/* Starting Components */}
+                <label style={{ fontFamily: 'var(--font-heading)', letterSpacing: 0.3, fontSize: '0.85rem', color: 'var(--text-dim)', display: 'block', marginTop: 10, marginBottom: 4 }}>
+                  시작 컴포넌트 (코인가치 합 2)
+                </label>
+                <StartingComponentSelector
+                  selected={p.startingComponents}
+                  onSelect={(comps) => updatePlayer(idx, { startingComponents: comps })}
+                />
 
                 {/* Human toggle */}
                 <label style={{
@@ -254,4 +302,238 @@ export default function SetupPage() {
       </div>
     </main>
   );
+}
+
+/* ─── Starting Trick Selector ─── */
+function StartingTrickSelector({ magicianId, selected, onSelect }: {
+  magicianId: MagicianId;
+  selected: TrickId | null;
+  onSelect: (id: TrickId) => void;
+}) {
+  const mag = getMagicianDef(magicianId);
+  const lv1Tricks = getTricksByCategory(mag.favoriteCategory).filter(t => t.level === 1);
+  const catMeta = TRICK_CATEGORY_META[mag.favoriteCategory];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {lv1Tricks.map((trick) => {
+        const isSelected = selected === trick.id;
+        const comps = Object.entries(trick.components) as [ComponentType, number][];
+        return (
+          <button
+            key={trick.id}
+            onClick={() => onSelect(trick.id as TrickId)}
+            className={`btn btn-sm ${isSelected ? 'btn-primary' : ''}`}
+            style={{
+              textAlign: 'left', padding: '5px 8px',
+              borderLeft: `3px solid ${catMeta.color}`,
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: '0.78rem' }}>{trick.nameKo}</div>
+            <div style={{ fontSize: '0.62rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-dim)' }}>
+              필요: {comps.map(([c, n]) => `${COMPONENT_META[c].name}${n}`).join(' ')}
+              {' | '}보상: {trick.yields.fame > 0 ? `명성${trick.yields.fame} ` : ''}
+              {trick.yields.coins > 0 ? `코인${trick.yields.coins} ` : ''}
+              {trick.yields.shards > 0 ? `샤드${trick.yields.shards}` : ''}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Starting Component Selector ─── */
+function StartingComponentSelector({ selected, onSelect }: {
+  selected: ComponentType[];
+  onSelect: (comps: ComponentType[]) => void;
+}) {
+  const totalValue = getComponentCoinValue(selected);
+  const remaining = 2 - totalValue;
+
+  function addComponent(comp: ComponentType) {
+    const cost = COMPONENT_META[comp].cost;
+    if (cost > remaining) return;
+    onSelect([...selected, comp]);
+  }
+
+  function reset() {
+    onSelect([]);
+  }
+
+  if (totalValue >= 2) {
+    return (
+      <div>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+          {selected.map((comp, i) => (
+            <span key={i} style={{
+              padding: '2px 8px', borderRadius: 'var(--radius)',
+              background: 'var(--bg-secondary)', border: '1px solid var(--cyan-light)',
+              fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 3,
+            }}>
+              <GameIcon type={comp} size="xs" />
+              {COMPONENT_META[comp].name}
+            </span>
+          ))}
+          <button onClick={reset} className="btn btn-sm" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+            초기화
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show selectable components
+  const availableBasic = remaining >= 1 ? BASIC_COMPONENTS : [];
+  const availableAdvanced = remaining >= 2 ? ADVANCED_COMPONENTS : [];
+
+  return (
+    <div>
+      {selected.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4, alignItems: 'center' }}>
+          {selected.map((comp, i) => (
+            <span key={i} style={{
+              padding: '2px 8px', borderRadius: 'var(--radius)',
+              background: 'var(--bg-secondary)', border: '1px solid var(--cyan-light)',
+              fontSize: '0.72rem',
+            }}>
+              {COMPONENT_META[comp].name}
+            </span>
+          ))}
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>
+            (남은 가치: {remaining})
+          </span>
+          <button onClick={reset} className="btn btn-sm" style={{ fontSize: '0.62rem', padding: '1px 6px' }}>
+            초기화
+          </button>
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+        {availableBasic.map((comp) => (
+          <button
+            key={comp}
+            onClick={() => addComponent(comp)}
+            className="btn btn-sm"
+            style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 3 }}
+          >
+            <GameIcon type={comp} size="xs" />
+            {COMPONENT_META[comp].name} (1)
+          </button>
+        ))}
+        {availableAdvanced.map((comp) => (
+          <button
+            key={comp}
+            onClick={() => addComponent(comp)}
+            className="btn btn-sm"
+            style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 3 }}
+          >
+            <GameIcon type={comp} size="xs" />
+            {COMPONENT_META[comp].name} (2)
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Specialist Bonus Section ─── */
+const ALL_CATEGORIES: ('MECHANICAL' | 'OPTICAL' | 'ESCAPE' | 'SPIRITUAL')[] =
+  ['MECHANICAL', 'OPTICAL', 'ESCAPE', 'SPIRITUAL'];
+
+function SpecialistBonusSection({ specialist, magicianId, engineerBonusTrickId, managerBonusComponents, onEngineerTrickSelect, onManagerComponentsSelect }: {
+  specialist: SpecialistType;
+  magicianId: MagicianId;
+  engineerBonusTrickId: TrickId | null;
+  managerBonusComponents: ComponentType[];
+  onEngineerTrickSelect: (id: TrickId) => void;
+  onManagerComponentsSelect: (comps: ComponentType[]) => void;
+}) {
+  const [bonusCat, setBonusCat] = useState<typeof ALL_CATEGORIES[number] | null>(null);
+  const bonusLabelStyle = {
+    fontFamily: 'var(--font-heading)', letterSpacing: 0.3,
+    fontSize: '0.8rem', color: 'var(--gold-primary)', display: 'block' as const,
+    marginTop: 8, marginBottom: 4,
+  };
+
+  if (specialist === 'ASSISTANT') {
+    return (
+      <div style={bonusLabelStyle}>
+        보너스: 추가 견습생 1명 (자동)
+      </div>
+    );
+  }
+
+  if (specialist === 'ENGINEER') {
+    const mag = getMagicianDef(magicianId);
+    const allLv1 = ALL_CATEGORIES.flatMap(cat =>
+      getTricksByCategory(cat).filter(t => t.level === 1),
+    );
+
+    return (
+      <div>
+        <div style={bonusLabelStyle}>보너스: 추가 Lv.1 트릭 (아무 카테고리)</div>
+        {/* Category filter */}
+        <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
+          {ALL_CATEGORIES.map(cat => {
+            const meta = TRICK_CATEGORY_META[cat];
+            return (
+              <button
+                key={cat}
+                onClick={() => setBonusCat(bonusCat === cat ? null : cat)}
+                className={`btn btn-sm ${bonusCat === cat ? 'btn-primary' : ''}`}
+                style={{ fontSize: '0.65rem', borderColor: meta.color, color: bonusCat === cat ? '#fff' : meta.color }}
+              >
+                {meta.name}
+              </button>
+            );
+          })}
+        </div>
+        {/* Trick list for selected category */}
+        {bonusCat && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 140, overflowY: 'auto' }}>
+            {getTricksByCategory(bonusCat).filter(t => t.level === 1).map(trick => {
+              const isSelected = engineerBonusTrickId === trick.id;
+              const comps = Object.entries(trick.components) as [ComponentType, number][];
+              const catMeta = TRICK_CATEGORY_META[trick.category];
+              return (
+                <button
+                  key={trick.id}
+                  onClick={() => onEngineerTrickSelect(trick.id as TrickId)}
+                  className={`btn btn-sm ${isSelected ? 'btn-primary' : ''}`}
+                  style={{ textAlign: 'left', padding: '4px 8px', borderLeft: `3px solid ${catMeta.color}` }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: '0.72rem' }}>{trick.nameKo}</div>
+                  <div style={{ fontSize: '0.6rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-dim)' }}>
+                    필요: {comps.map(([c, n]) => `${COMPONENT_META[c].name}${n}`).join(' ')}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {!bonusCat && engineerBonusTrickId && (() => {
+          const t = allLv1.find(t => t.id === engineerBonusTrickId);
+          return t ? (
+            <div style={{ fontSize: '0.72rem', color: 'var(--cyan-light)' }}>
+              선택: {t.nameKo} ({TRICK_CATEGORY_META[t.category].name})
+            </div>
+          ) : null;
+        })()}
+      </div>
+    );
+  }
+
+  if (specialist === 'MANAGER') {
+    return (
+      <div>
+        <div style={bonusLabelStyle}>보너스: 추가 컴포넌트 (코인가치 합 2)</div>
+        <StartingComponentSelector
+          selected={managerBonusComponents}
+          onSelect={onManagerComponentsSelect}
+        />
+      </div>
+    );
+  }
+
+  return null;
 }

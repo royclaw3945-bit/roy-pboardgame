@@ -6,7 +6,7 @@ import type {
   ComponentType, PerfCardState, LocationSlot, SymbolMarkerState,
   SpecialistType, SpecialistBoard, TrickSlot,
 } from '../types';
-import type { DowntownDice, DarkAlleyState, MarketState, TheaterState } from '../types';
+import type { DowntownDice, DarkAlleyState, MarketState, TheaterState, TheaterWeekdaySlot } from '../types';
 import { MAGICIANS, getMagicianDef } from '../data/magicians';
 import { getCategoryTrickIds, getTrickDef } from '../data/tricks';
 import { getAllPerfCardIds } from '../data/perf-cards';
@@ -21,7 +21,8 @@ import { shuffle } from './random';
 const LOCATIONS_WITH_SLOTS: readonly Location[] = [
   'DOWNTOWN', 'MARKET_ROW', 'DARK_ALLEY',
 ];
-const LOCATIONS_NO_BLOCK: readonly Location[] = ['WORKSHOP', 'THEATER'];
+const LOCATIONS_NO_BLOCK: readonly Location[] = ['WORKSHOP'];
+// Theater는 별도 weekdaySlots로 관리 (locationSlots 사용 안 함)
 
 const ALL_COMPONENTS: readonly ComponentType[] = [
   'WOOD', 'METAL', 'GLASS', 'FABRIC',
@@ -39,6 +40,7 @@ function createCharacter(type: CharacterState['type']): CharacterState {
   return {
     type, ap: 0, assigned: false, location: null,
     placed: false, slotIndex: null, slotApMod: 0, shardConverted: false,
+    usedDrawFirstCard: false,
   };
 }
 
@@ -54,7 +56,7 @@ function createInitialSymbols(): readonly SymbolMarkerState[] {
 function createSpecialistBoard(type: SpecialistType): SpecialistBoard {
   switch (type) {
     case 'ENGINEER': return { type: 'ENGINEER', extraTrickSlot: false };
-    case 'MANAGER': return { type: 'MANAGER', extraComponentSlot: false };
+    case 'MANAGER': return { type: 'MANAGER', multiSlots: [null, null] };
     case 'ASSISTANT': return { type: 'ASSISTANT', freeApprentice: false };
   }
 }
@@ -83,14 +85,24 @@ function createPlayer(
   for (const comp of config.startingComponents) {
     components[comp] = Math.min((components[comp] ?? 0) + 1, STARTING.maxComponentsPerType);
   }
-  // Manager bonus: extra components (coin value 2)
-  // Components already included in config.startingComponents by caller
+  // Manager bonus: extra components go into multi-component slots
+  // (components on multi slots count as +1 of that type)
+  const managerMultiSlots: (ComponentType | null)[] = [null, null];
+  if (spec === 'MANAGER' && config.managerBonusComponents) {
+    for (let i = 0; i < config.managerBonusComponents.length && i < 2; i++) {
+      const comp = config.managerBonusComponents[i];
+      components[comp] = Math.min((components[comp] ?? 0) + 1, STARTING.maxComponentsPerType);
+      managerMultiSlots[i] = comp;
+    }
+  }
 
-  // Starting Lv.1 trick from favorite category
+  // Starting Lv.1 trick from favorite category (player-selected or auto)
   const favCat = magician.favoriteCategory;
   const decks = { ...trickDecks };
   const favDeck = [...decks[favCat]];
-  const lv1Trick = favDeck.find(id => getTrickDef(id).level === 1);
+  const lv1Trick = config.startingTrickId
+    ? (favDeck.includes(config.startingTrickId) ? config.startingTrickId : favDeck.find(id => getTrickDef(id).level === 1))
+    : favDeck.find(id => getTrickDef(id).level === 1);
 
   const tricks: TrickSlot[] = [];
   const symbols = [...createInitialSymbols()];
@@ -100,10 +112,14 @@ function createPlayer(
     symbols[0] = { assigned: true, trickId: lv1Trick };
     const trickDef = getTrickDef(lv1Trick);
 
-    // Check free Prepare
+    // Check free Prepare (include specialist boards for Manager multi-slot bonus)
+    const tempBoards: SpecialistBoard[] = [spec === 'MANAGER'
+      ? { type: 'MANAGER' as const, multiSlots: managerMultiSlots }
+      : createSpecialistBoard(spec)];
     const tempPlayer = {
       components: components as Readonly<Record<ComponentType, number>>,
-    } as PlayerState;
+      specialistBoards: tempBoards,
+    } as unknown as PlayerState;
     const canPrepare = hasRequiredComponents(tempPlayer, lv1Trick);
 
     tricks.push({
@@ -117,25 +133,39 @@ function createPlayer(
     decks[favCat] = favDeck.filter(id => id !== lv1Trick);
   }
 
-  // Engineer bonus: extra Lv.1 trick from any category
+  // Engineer bonus: extra Lv.1 trick from any category (player-selected or auto)
   if (spec === 'ENGINEER') {
-    const categories: TrickCategory[] = ['MECHANICAL', 'OPTICAL', 'ESCAPE', 'SPIRITUAL'];
-    for (const cat of categories) {
-      if (cat === favCat) continue; // try other categories first
-      const deck = [...decks[cat]];
-      const extraTrick = deck.find(id => getTrickDef(id).level === 1);
-      if (extraTrick) {
-        symbols[1] = { assigned: true, trickId: extraTrick };
-        const td = getTrickDef(extraTrick);
-        const tp = { components: components as Readonly<Record<ComponentType, number>> } as PlayerState;
-        const cp = hasRequiredComponents(tp, extraTrick);
-        tricks.push({
-          trickId: extraTrick, symbolIndex: 1,
-          prepared: cp, markersOnTrick: cp ? td.markerSlots : 0,
-        });
-        decks[cat] = deck.filter(id => id !== extraTrick);
-        break;
+    let extraTrick: TrickId | undefined;
+    if (config.engineerBonusTrickId) {
+      const td = getTrickDef(config.engineerBonusTrickId);
+      const deck = decks[td.category];
+      if (deck.includes(config.engineerBonusTrickId)) {
+        extraTrick = config.engineerBonusTrickId;
       }
+    }
+    // Fallback: auto-pick from non-favorite category
+    if (!extraTrick) {
+      const categories: TrickCategory[] = ['MECHANICAL', 'OPTICAL', 'ESCAPE', 'SPIRITUAL'];
+      for (const cat of categories) {
+        if (cat === favCat) continue;
+        const deck = [...decks[cat]];
+        const found = deck.find(id => getTrickDef(id).level === 1);
+        if (found) { extraTrick = found; break; }
+      }
+    }
+    if (extraTrick) {
+      const td = getTrickDef(extraTrick);
+      symbols[1] = { assigned: true, trickId: extraTrick };
+      const tp = {
+        components: components as Readonly<Record<ComponentType, number>>,
+        specialistBoards: [createSpecialistBoard(spec)],
+      } as unknown as PlayerState;
+      const cp = hasRequiredComponents(tp, extraTrick);
+      tricks.push({
+        trickId: extraTrick, symbolIndex: 1,
+        prepared: cp, markersOnTrick: cp ? td.markerSlots : 0,
+      });
+      decks[td.category] = [...decks[td.category]].filter(id => id !== extraTrick);
     }
   }
 
@@ -152,7 +182,9 @@ function createPlayer(
     characters,
     specialists: [spec],
     symbols,
-    specialistBoards: [createSpecialistBoard(spec)],
+    specialistBoards: [spec === 'MANAGER'
+      ? { type: 'MANAGER' as const, multiSlots: managerMultiSlots }
+      : createSpecialistBoard(spec)],
     assignmentCards: createAssignmentCards(index),
     currentPlacements: [],
     chosenWeekday: null,
@@ -174,10 +206,13 @@ function createLocationSlots(numPlayers: number): Record<Location, readonly Loca
       .map((s, i) => ({ row: i, apMod: s.apMod, occupant: null }));
   }
 
-  // Workshop and Theater: always all 4 slots, no blocking
+  // Workshop: always all 4 slots, no blocking
   for (const loc of LOCATIONS_NO_BLOCK) {
     result[loc] = LOCATION_SLOTS.map((s, i) => ({ row: i, apMod: s.apMod, occupant: null }));
   }
+
+  // Theater: managed via theater.weekdaySlots, not locationSlots
+  result['THEATER'] = [];
 
   return result;
 }
@@ -227,25 +262,53 @@ function createDowntownDice(): DowntownDice {
 }
 
 function createMarket(): MarketState {
-  return { stock: [], orders: [], quickOrder: null };
+  return {
+    buyArea: ['WOOD', 'METAL', 'GLASS', 'FABRIC'],
+    orderArea: [],
+    quickOrderSlot: null,
+  };
+}
+
+/** 극장 요일 슬롯 AP 보정: 상단 슬롯은 +1, +0 (2인 시 +1만) */
+const THEATER_BACKSTAGE_AP = [1, 0] as const;
+
+function createTheaterWeekdaySlot(numPlayers: number): TheaterWeekdaySlot {
+  const numBackstage = numPlayers <= 2 ? 1 : 2;
+  return {
+    backstage: Array.from({ length: numBackstage }, (_, i) => ({
+      occupant: null,
+      apMod: THEATER_BACKSTAGE_AP[i] ?? 0,
+    })),
+    performSlot: { occupant: null },
+  };
 }
 
 function createTheater(
   activeCards: readonly PerfCardState[],
   deck: readonly CardId[],
+  numPlayers: number,
 ): TheaterState {
   const weekdayPerformers = {} as Record<Weekday, PlayerId | null>;
-  for (const day of WEEKDAYS) weekdayPerformers[day] = null;
+  const weekdaySlots = {} as Record<Weekday, TheaterWeekdaySlot>;
+  for (const day of WEEKDAYS) {
+    weekdayPerformers[day] = null;
+    weekdaySlots[day] = createTheaterWeekdaySlot(numPlayers);
+  }
   return {
     perfCards: activeCards,
     perfDeck: deck,
     perfDiscard: [],
     weekdayPerformers,
+    weekdaySlots,
   };
 }
 
 function createDarkAlley(): DarkAlleyState {
-  return { specialDeck: [], drawnCards: {} };
+  return {
+    specialDecks: {},
+    drawnChoices: null,
+    drawnFromLocation: null,
+  };
 }
 
 export function createGame(
@@ -289,10 +352,12 @@ export function createGame(
     currentPlayerIdx: 0,
     turnQueue: [],
     currentTurnIdx: -1,
-    theater: createTheater(activeCards, deck),
+    theater: createTheater(activeCards, deck, numPlayers),
     downtownDice: createDowntownDice(),
     market: createMarket(),
     darkAlley: createDarkAlley(),
+    prophecy: { active: null, pending: [], deck: [], discard: [] },
+    advertisedPlayers: [],
     trickDecks: currentDecks,
     locationSlots: createLocationSlots(numPlayers),
     assignmentPhase: null,

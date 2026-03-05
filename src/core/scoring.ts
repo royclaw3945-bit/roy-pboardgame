@@ -3,7 +3,7 @@
 import type { GameState, PlayerState, PlayerId, ComponentType } from './types';
 import { getTrickDef } from './data/tricks';
 import { adjustFame, addLog } from './state/helpers';
-import { countTotalMarkersOnTricks, countSpecialCards } from './state/selectors';
+import { countTotalMarkersOnTricks, countSpecialCards, getEffectiveComponentCount } from './state/selectors';
 import { END_SCORING } from './data/constants';
 
 interface ScoreBreakdown {
@@ -57,16 +57,13 @@ function calcTrickEndBonus(player: PlayerState, _state: GameState): number {
         catBonus = Math.floor(player.coins / 3) * (eb.famePerUnit ?? 0);
         break;
       case 'PER_BASIC_COMP':
-        // v4: total count of basic components (not number of types)
-        catBonus = BASIC_COMPS.reduce((sum, c) => sum + player.components[c], 0) * (eb.famePerUnit ?? 0);
+        catBonus = BASIC_COMPS.reduce((sum, c) => sum + getEffectiveComponentCount(player, c), 0) * (eb.famePerUnit ?? 0);
         break;
       case 'PER_ADVANCED_COMP':
-        // v4: total count
-        catBonus = ADVANCED_COMPS.reduce((sum, c) => sum + player.components[c], 0) * (eb.famePerUnit ?? 0);
+        catBonus = ADVANCED_COMPS.reduce((sum, c) => sum + getEffectiveComponentCount(player, c), 0) * (eb.famePerUnit ?? 0);
         break;
       case 'PER_SUPERIOR_COMP':
-        // v4: total count
-        catBonus = SUPERIOR_COMPS.reduce((sum, c) => sum + player.components[c], 0) * (eb.famePerUnit ?? 0);
+        catBonus = SUPERIOR_COMPS.reduce((sum, c) => sum + getEffectiveComponentCount(player, c), 0) * (eb.famePerUnit ?? 0);
         break;
       case 'ALL_SPECIALISTS': {
         const types = new Set(player.specialists);

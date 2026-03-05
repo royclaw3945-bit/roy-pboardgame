@@ -1,6 +1,6 @@
 // Setup phase — roll dice + determine initiative (v4: DA only)
 
-import type { GameState, Weekday } from '../types';
+import type { GameState, Weekday, TheaterWeekdaySlot } from '../types';
 import type { DahlgaardFace, InnFace, BankFace } from '../types';
 import { rngRollDie, rngShuffle } from '../state/random';
 import { addLog } from '../state/helpers';
@@ -61,13 +61,25 @@ function determineInitiative(state: GameState): GameState {
   return { ...state, initiativeOrder: sorted };
 }
 
+function resetWeekdaySlots(state: GameState): Record<Weekday, TheaterWeekdaySlot> {
+  const result = {} as Record<Weekday, TheaterWeekdaySlot>;
+  for (const day of WEEKDAYS) {
+    const existing = state.theater.weekdaySlots[day];
+    result[day] = {
+      backstage: existing.backstage.map(bs => ({ ...bs, occupant: null })),
+      performSlot: { occupant: null },
+    };
+  }
+  return result;
+}
+
 function resetPlayerRoundState(state: GameState): GameState {
   const weekdayPerformers = {} as Record<Weekday, null>;
   for (const day of WEEKDAYS) weekdayPerformers[day] = null;
 
   return {
     ...state,
-    theater: { ...state.theater, weekdayPerformers },
+    theater: { ...state.theater, weekdayPerformers, weekdaySlots: resetWeekdaySlots(state) },
     players: state.players.map(p => ({
       ...p,
       hasAdvertised: false,

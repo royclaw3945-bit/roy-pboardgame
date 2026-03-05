@@ -54,6 +54,8 @@ export type TrickId = string & { readonly __brand: 'TrickId' };
 export type PlayerId = number & { readonly __brand: 'PlayerId' };
 export type CardId = string & { readonly __brand: 'CardId' };
 export type AssignmentCardId = string & { readonly __brand: 'AssignmentCardId' };
+export type SpecialCardDefId = string & { readonly __brand: 'SpecialCardDefId' };
+export type ProphecyTokenId = string & { readonly __brand: 'ProphecyTokenId' };
 
 // -- DA Ability --
 export type DaAbilityId =

@@ -6,6 +6,7 @@ import { registerHandler } from './registry';
 import { getPlayer } from '../state/selectors';
 import { updatePlayer, adjustFame, adjustCoins, addLog, pipe } from '../state/helpers';
 import { ADVERTISE_COST, ADVERTISE_FAME } from '../data/constants';
+import { initAssignmentPhase } from '../phases/assignment';
 
 type AdvertiseAction = Extract<GameAction, { type: 'ADVERTISE' }>;
 type SkipAction = Extract<GameAction, { type: 'SKIP_ADVERTISE' }>;
@@ -60,6 +61,6 @@ registerHandler<FinishAction>('FINISH_ADVERTISE', {
     return errors;
   },
   apply(state) {
-    return { ...state, phase: 'ASSIGNMENT' };
+    return initAssignmentPhase({ ...state, phase: 'ASSIGNMENT', currentPlayerIdx: 0 });
   },
 });

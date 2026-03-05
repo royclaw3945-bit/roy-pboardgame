@@ -4,7 +4,7 @@ import type { Phase, Location, TrickCategory, TrickId, PlayerId, Weekday } from 
 import type { PlayerState } from './player';
 import type {
   TheaterState, DowntownDice, MarketState,
-  DarkAlleyState, LocationSlot, TurnQueueEntry, LogEntry,
+  DarkAlleyState, ProphecyState, LocationSlot, TurnQueueEntry, LogEntry,
 } from './board';
 
 export interface GameConfig {
@@ -40,6 +40,9 @@ export interface GameState {
   readonly downtownDice: DowntownDice;
   readonly market: MarketState;
   readonly darkAlley: DarkAlleyState;
+  readonly prophecy: ProphecyState;
+  /** 이번 턴 광고한 플레이어 (End Turn에 포스터 반환) */
+  readonly advertisedPlayers: readonly PlayerId[];
 
   readonly trickDecks: Readonly<Record<TrickCategory, readonly TrickId[]>>;
   readonly locationSlots: Readonly<Record<Location, readonly LocationSlot[]>>;

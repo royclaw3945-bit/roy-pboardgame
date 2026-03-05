@@ -4,6 +4,7 @@ import { useGameStore } from '@/stores/game-store';
 import { useUIStore } from '@/stores/ui-store';
 import { getTrickDef } from '@/core/data/tricks';
 import { getMagicianDef } from '@/core/data/magicians';
+import { getEffectiveComponentCount } from '@/core/state/selectors';
 import {
   CHARACTER_META, COMPONENT_META, LOCATION_META,
   TRICK_CATEGORY_META, SYMBOL_INDEX_TO_SHAPE,
@@ -39,7 +40,7 @@ export function PlayerBoard() {
   const mag = getMagicianDef(player.magicianId);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* ── Header ── */}
       <div className="pb-header">
         <img
@@ -51,14 +52,14 @@ export function PlayerBoard() {
           <img
             src={mag.img} alt={mag.nameKo}
             className="magician-portrait"
-            style={{ width: 44, height: 44, border: `2px solid ${player.color}` }}
+            style={{ width: 52, height: 52, border: `3px solid ${player.color}`, boxShadow: `0 0 12px ${player.color}40` }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
           <div>
-            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '1rem', color: player.color }}>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 900, fontSize: '1.1rem', color: player.color, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
               {player.name}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>{mag.nameKo}</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>{mag.nameKo}</div>
           </div>
         </div>
       </div>
@@ -110,12 +111,12 @@ export function PlayerBoard() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {c.ap > 0 && <span className="char-ap">AP {c.ap}</span>}
                   {c.location && !c.placed && (
-                    <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: 8, background: 'var(--green)', color: '#000', fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 8, background: 'var(--green)', color: '#000', fontWeight: 700 }}>
                       배정
                     </span>
                   )}
                   {c.placed && c.ap <= 0 && (
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>완료</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', padding: '2px 6px', background: 'var(--bg-secondary)', borderRadius: 6 }}>완료</span>
                   )}
                 </div>
               </div>
@@ -270,7 +271,7 @@ export function PlayerBoard() {
       {/* ── Components ── */}
       <Section title="컴포넌트">
         {COMP_TIERS.map((tier) => {
-          const hasAny = tier.items.some(c => player.components[c] > 0);
+          const hasAny = tier.items.some(c => player.components[c] > 0 || getEffectiveComponentCount(player, c) > 0);
           if (!hasAny) return null;
           return (
             <div key={tier.label} style={{ marginBottom: 6 }}>
@@ -280,12 +281,18 @@ export function PlayerBoard() {
               <div className="component-grid">
                 {tier.items.map((comp) => {
                   const count = player.components[comp];
-                  if (count === 0) return null;
+                  const effective = getEffectiveComponentCount(player, comp);
+                  if (count === 0 && effective === 0) return null;
+                  const hasBonus = effective > count;
                   return (
                     <div key={comp} className="component-item">
                       <GameIcon type={comp} size="xs" color="var(--cyan-light)" />
                       <span style={{ fontSize: '0.72rem' }}>{COMPONENT_META[comp].name}</span>
-                      <span className="count">{count}</span>
+                      <span className="count">
+                        {hasBonus ? (
+                          <>{count}<span style={{ color: 'var(--gold-primary)', fontSize: '0.65rem' }}>+{effective - count}</span></>
+                        ) : count}
+                      </span>
                     </div>
                   );
                 })}

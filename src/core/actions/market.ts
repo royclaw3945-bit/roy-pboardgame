@@ -1,23 +1,29 @@
-// Market actions: BUY, BARGAIN, ORDER, QUICK_ORDER
+// Market actions: BUY (with integrated Bargain), ORDER, QUICK_ORDER (v5)
 
-import type { GameState, GameAction, ValidationError } from '../types';
+import type { GameState, GameAction, ValidationError, ComponentType } from '../types';
 import { err } from '../types';
 import { registerHandler } from './registry';
-import { getPlayer } from '../state/selectors';
-import { updatePlayer, addLog, pipe } from '../state/helpers';
+import { getPlayer, getEffectiveComponentCount } from '../state/selectors';
+import { updatePlayer, addLog } from '../state/helpers';
 import { COMPONENT_META, STARTING } from '../data/constants';
 
 type BuyAction = Extract<GameAction, { type: 'BUY' }>;
-type BargainAction = Extract<GameAction, { type: 'BARGAIN' }>;
 type OrderAction = Extract<GameAction, { type: 'ORDER' }>;
 type QuickOrderAction = Extract<GameAction, { type: 'QUICK_ORDER' }>;
 
-function checkComponentLimit(player: ReturnType<typeof getPlayer>, comp: string): ValidationError | null {
-  const current = player.components[comp as keyof typeof player.components] ?? 0;
-  if (current >= STARTING.maxComponentsPerType) {
+function checkComponentLimit(player: ReturnType<typeof getPlayer>, comp: ComponentType): ValidationError | null {
+  const effective = getEffectiveComponentCount(player, comp);
+  if (effective >= STARTING.maxComponentsPerType) {
     return err('component', `${comp} 보유 한도 초과 (최대 ${STARTING.maxComponentsPerType})`);
   }
   return null;
+}
+
+/** Check if component is available in buyArea (includes quickOrderSlot) */
+function isInBuyArea(state: GameState, comp: ComponentType): boolean {
+  if (state.market.buyArea.includes(comp)) return true;
+  if (state.market.quickOrderSlot === comp) return true;
+  return false;
 }
 
 registerHandler<BuyAction>('BUY', {
@@ -26,9 +32,12 @@ registerHandler<BuyAction>('BUY', {
     const player = state.players.find(p => p.id === action.playerId);
     if (!player) { errors.push(err('playerId', '플레이어 없음')); return errors; }
     const meta = COMPONENT_META[action.componentType];
-    if (player.coins < meta.cost) errors.push(err('coins', '코인 부족'));
-    if (!state.market.stock.includes(action.componentType)) {
-      errors.push(err('stock', '시장에 해당 컴포넌트가 없습니다'));
+    // Bargain discount: each bargainAP reduces cost by 1 (minimum 1)
+    const discount = action.bargainAP ?? 0;
+    const cost = Math.max(meta.cost - discount, 1);
+    if (player.coins < cost) errors.push(err('coins', `코인 부족 (필요: ${cost})`));
+    if (!isInBuyArea(state, action.componentType)) {
+      errors.push(err('buyArea', '시장 Buy 영역에 해당 컴포넌트가 없습니다'));
     }
     const limit = checkComponentLimit(player, action.componentType);
     if (limit) errors.push(limit);
@@ -36,47 +45,16 @@ registerHandler<BuyAction>('BUY', {
   },
   apply(state, action) {
     const player = getPlayer(state, action.playerId);
-    const cost = COMPONENT_META[action.componentType].cost;
-    const stockIdx = state.market.stock.indexOf(action.componentType);
-    const newStock = [...state.market.stock];
-    newStock.splice(stockIdx, 1);
+    const meta = COMPONENT_META[action.componentType];
+    const discount = action.bargainAP ?? 0;
+    const cost = Math.max(meta.cost - discount, 1);
 
-    let s: GameState = { ...state, market: { ...state.market, stock: newStock } };
-    s = updatePlayer(s, action.playerId, p => ({
+    let s = updatePlayer(state, action.playerId, p => ({
       coins: p.coins - cost,
       components: { ...p.components, [action.componentType]: p.components[action.componentType] + 1 },
     }));
-    s = addLog(s, `${player.name}이(가) ${action.componentType} 구매 (-${cost}코인)`);
-    return s;
-  },
-});
-
-registerHandler<BargainAction>('BARGAIN', {
-  validate(state, action) {
-    const errors: ValidationError[] = [];
-    const player = state.players.find(p => p.id === action.playerId);
-    if (!player) { errors.push(err('playerId', '플레이어 없음')); return errors; }
-    // Bargain = buy at reduced cost (1 coin regardless of tier)
-    if (player.coins < 1) errors.push(err('coins', '코인 부족'));
-    if (!state.market.stock.includes(action.componentType)) {
-      errors.push(err('stock', '시장에 없음'));
-    }
-    const limit = checkComponentLimit(player, action.componentType);
-    if (limit) errors.push(limit);
-    return errors;
-  },
-  apply(state, action) {
-    const player = getPlayer(state, action.playerId);
-    const stockIdx = state.market.stock.indexOf(action.componentType);
-    const newStock = [...state.market.stock];
-    newStock.splice(stockIdx, 1);
-
-    let s: GameState = { ...state, market: { ...state.market, stock: newStock } };
-    s = updatePlayer(s, action.playerId, p => ({
-      coins: p.coins - 1,
-      components: { ...p.components, [action.componentType]: p.components[action.componentType] + 1 },
-    }));
-    s = addLog(s, `${player.name}이(가) ${action.componentType} 흥정 구매 (-1코인)`);
+    const discountText = discount > 0 ? ` (흥정 -${discount})` : '';
+    s = addLog(s, `${player.name}이(가) ${COMPONENT_META[action.componentType].name} 구매 (-${cost}코인${discountText})`);
     return s;
   },
 });
@@ -86,20 +64,22 @@ registerHandler<OrderAction>('ORDER', {
     const errors: ValidationError[] = [];
     const player = state.players.find(p => p.id === action.playerId);
     if (!player) { errors.push(err('playerId', '플레이어 없음')); return errors; }
-    const meta = COMPONENT_META[action.componentType];
-    if (player.coins < meta.cost) errors.push(err('coins', '코인 부족'));
-    const limit = checkComponentLimit(player, action.componentType);
-    if (limit) errors.push(limit);
+    // Order: 같은 타입이 orderArea에 이미 있으면 불가
+    if (state.market.orderArea.includes(action.componentType)) {
+      errors.push(err('order', '이미 주문 중인 컴포넌트'));
+    }
     return errors;
   },
   apply(state, action) {
     const player = getPlayer(state, action.playerId);
-    const cost = COMPONENT_META[action.componentType].cost;
-    let s = updatePlayer(state, action.playerId, p => ({
-      coins: p.coins - cost,
-      components: { ...p.components, [action.componentType]: p.components[action.componentType] + 1 },
-    }));
-    s = addLog(s, `${player.name}이(가) ${action.componentType} 주문 (-${cost}코인)`);
+    let s: GameState = {
+      ...state,
+      market: {
+        ...state.market,
+        orderArea: [...state.market.orderArea, action.componentType],
+      },
+    };
+    s = addLog(s, `${player.name}이(가) ${COMPONENT_META[action.componentType].name} 주문 (다음 턴 도착)`);
     return s;
   },
 });
@@ -109,21 +89,21 @@ registerHandler<QuickOrderAction>('QUICK_ORDER', {
     const errors: ValidationError[] = [];
     const player = state.players.find(p => p.id === action.playerId);
     if (!player) { errors.push(err('playerId', '플레이어 없음')); return errors; }
-    const meta = COMPONENT_META[action.componentType];
-    // Quick order costs 1 extra
-    if (player.coins < meta.cost + 1) errors.push(err('coins', '코인 부족 (급송 추가비용 포함)'));
-    const limit = checkComponentLimit(player, action.componentType);
-    if (limit) errors.push(limit);
+    if (state.market.quickOrderSlot !== null) {
+      errors.push(err('quickOrder', 'Quick Order 슬롯이 이미 사용 중'));
+    }
     return errors;
   },
   apply(state, action) {
     const player = getPlayer(state, action.playerId);
-    const cost = COMPONENT_META[action.componentType].cost + 1;
-    let s = updatePlayer(state, action.playerId, p => ({
-      coins: p.coins - cost,
-      components: { ...p.components, [action.componentType]: p.components[action.componentType] + 1 },
-    }));
-    s = addLog(s, `${player.name}이(가) ${action.componentType} 급송 주문 (-${cost}코인)`);
+    let s: GameState = {
+      ...state,
+      market: {
+        ...state.market,
+        quickOrderSlot: action.componentType,
+      },
+    };
+    s = addLog(s, `${player.name}이(가) ${COMPONENT_META[action.componentType].name} 급송 주문 (즉시 구매 가능)`);
     return s;
   },
 });

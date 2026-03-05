@@ -16,10 +16,12 @@ export function LocationCard({ location, fullWidth }: Props) {
 
   const meta = LOCATION_META[location];
   const slots = state.locationSlots[location] ?? [];
+  const occupiedCount = slots.filter(s => s.occupant).length;
 
   return (
     <div
       className="location-card has-bg"
+      data-loc={location}
       style={{
         backgroundImage: `url(${meta.img})`,
         ...(fullWidth && { gridColumn: '1 / -1' }),
@@ -27,10 +29,13 @@ export function LocationCard({ location, fullWidth }: Props) {
     >
       {/* Header */}
       <div className="location-header">
-        <GameIcon type={location} size="md" color="var(--gold-primary)" />
+        <GameIcon type={location} size="md" color="var(--loc-color)" />
         <span className="location-name">{meta.name}</span>
-        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-dim)' }}>
-          {slots.filter(s => s.occupant).length}/{slots.length}
+        <span className="loc-slot-count">
+          {occupiedCount > 0 && (
+            <span style={{ color: 'var(--green)', marginRight: 2 }}>{occupiedCount}</span>
+          )}
+          {occupiedCount > 0 ? '/' : ''}{slots.length}
         </span>
       </div>
 
@@ -50,26 +55,25 @@ export function LocationCard({ location, fullWidth }: Props) {
               className={`worker-slot ${slot.occupant ? 'occupied' : ''}`}
               style={{
                 borderColor: player ? player.color : undefined,
-                borderWidth: player ? 2 : undefined,
+                ...(player && { boxShadow: `0 0 8px ${player.color}40` }),
               }}
               title={
                 char
                   ? `${player!.name} - ${CHARACTER_META[char.type].name}`
-                  : `AP: ${slot.apMod >= 0 ? '+' : ''}${slot.apMod}`
+                  : `AP 보정: ${slot.apMod >= 0 ? '+' : ''}${slot.apMod}`
               }
             >
               {slot.occupant && char ? (
-                <GameIcon
-                  type={char.type}
-                  size="sm"
-                  color={player?.color}
-                />
-              ) : (
-                <>
-                  <span className="ws-ap">
-                    {slot.apMod > 0 ? `+${slot.apMod}` : slot.apMod}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                  <GameIcon type={char.type} size="sm" color={player?.color} />
+                  <span style={{ fontSize: '0.55rem', color: player?.color, fontWeight: 700 }}>
+                    {player?.name.slice(0, 3)}
                   </span>
-                </>
+                </div>
+              ) : (
+                <span className={`ws-ap ${slot.apMod > 0 ? 'positive' : 'zero'}`}>
+                  {slot.apMod > 0 ? `+${slot.apMod}` : slot.apMod === 0 ? '0' : slot.apMod}
+                </span>
               )}
             </div>
           );

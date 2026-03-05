@@ -6,26 +6,33 @@ import { success, failure, err } from './types';
 import { getHandler } from './actions';
 import { updateCharacter } from './state/helpers';
 import { advanceTurn } from './phases/placement';
+import { getTrickDef } from './data/tricks';
 
 export interface DispatchResult {
   readonly result: ActionResult;
   readonly state: GameState;
 }
 
-/** Actions that cost AP and require location validation during PLACEMENT */
+/** Actions that cost AP — rulebook-accurate values */
 const AP_COST: Readonly<Record<string, number>> = {
-  LEARN_TRICK: 1,
-  TAKE_COINS: 1,
-  HIRE: 1,
+  // Downtown (main actions = 3 AP)
+  LEARN_TRICK: 3,
+  TAKE_COINS: 3,
+  HIRE: 3,
+  REROLL: 1,
+  SET_DIE: 2,
+  // Market
   BUY: 1,
-  BARGAIN: 1,
   ORDER: 1,
-  QUICK_ORDER: 1,
-  PREPARE: 1,
+  QUICK_ORDER: 2,
+  // Workshop — PREPARE is dynamic, handled separately
+  // Theater
   SETUP_TRICK: 1,
   RESCHEDULE: 1,
-  CHOOSE_WEEKDAY: 1,
-  DRAW_SPECIAL: 1,
+  CHOOSE_WEEKDAY: 0, // v5: 배치 시 자동 선택, AP 비용 없음
+  // Dark Alley
+  DRAW_CARDS: 1,
+  CHOOSE_CARD: 0,
   FORTUNE_TELLING: 1,
 };
 
@@ -38,21 +45,34 @@ const ACTION_LOCATION: Readonly<Record<string, Location>> = {
   SET_DIE: 'DOWNTOWN',
   CHOOSE_DIE: 'DOWNTOWN',
   BUY: 'MARKET_ROW',
-  BARGAIN: 'MARKET_ROW',
   ORDER: 'MARKET_ROW',
   QUICK_ORDER: 'MARKET_ROW',
   PREPARE: 'WORKSHOP',
   SETUP_TRICK: 'THEATER',
   RESCHEDULE: 'THEATER',
   CHOOSE_WEEKDAY: 'THEATER',
-  DRAW_SPECIAL: 'DARK_ALLEY',
+  DRAW_CARDS: 'DARK_ALLEY',
+  CHOOSE_CARD: 'DARK_ALLEY',
   FORTUNE_TELLING: 'DARK_ALLEY',
 };
+
+/** Get AP cost for an action (PREPARE uses dynamic trick.prepareCost) */
+function getApCost(state: GameState, action: GameAction): number {
+  if (action.type === 'PREPARE') {
+    const player = state.players.find(p => p.id === action.playerId);
+    if (player) {
+      const slot = player.tricks[action.trickIdx];
+      if (slot) return getTrickDef(slot.trickId).prepareCost;
+    }
+    return 1; // fallback
+  }
+  return AP_COST[action.type] ?? 0;
+}
 
 /** Validate AP + location for location actions during PLACEMENT phase */
 function validatePlacementAction(state: GameState, action: GameAction): readonly ValidationError[] {
   const errors: ValidationError[] = [];
-  const cost = AP_COST[action.type] ?? 0;
+  const cost = getApCost(state, action);
   const requiredLoc = ACTION_LOCATION[action.type];
 
   // Only validate during PLACEMENT phase
@@ -94,7 +114,7 @@ function validatePlacementAction(state: GameState, action: GameAction): readonly
 
 export function dispatch(state: GameState, action: GameAction): DispatchResult {
   // Pre-validate AP/location for location actions during PLACEMENT
-  if (state.phase === 'PLACEMENT' && action.type in ACTION_LOCATION) {
+  if (state.phase === 'PLACEMENT' && (action.type in ACTION_LOCATION)) {
     const apErrors = validatePlacementAction(state, action);
     if (apErrors.length > 0) {
       return { result: failure(apErrors), state };
@@ -117,8 +137,8 @@ export function dispatch(state: GameState, action: GameAction): DispatchResult {
   let newState = handler.apply(state, action);
 
   // Post-apply: consume AP for location actions during PLACEMENT
-  if (state.phase === 'PLACEMENT' && action.type in AP_COST) {
-    const cost = AP_COST[action.type];
+  if (state.phase === 'PLACEMENT' && (action.type in AP_COST || action.type === 'PREPARE')) {
+    const cost = getApCost(state, action);
     const turn = state.turnQueue[state.currentTurnIdx];
     if (turn && turn.characterIdx >= 0 && cost > 0) {
       newState = updateCharacter(newState, turn.playerId, turn.characterIdx, c => ({

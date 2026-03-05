@@ -70,6 +70,13 @@
   --player3: #22c55e;
   --player4: #eab308;
 
+  /* Location Colors */
+  --loc-theater: #fbbf24;
+  --loc-downtown: #60a5fa;
+  --loc-market: #34d399;
+  --loc-workshop: #f97316;
+  --loc-darkalley: #a78bfa;
+
   /* Functional */
   --green: #22c55e;
   --red: #ef4444;
