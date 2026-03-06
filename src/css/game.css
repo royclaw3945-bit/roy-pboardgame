@@ -3,18 +3,150 @@
    Characters, Tricks, Components, Stats
    ============================================ */
 
-/* ---- Phase Banner ---- */
+/* ---- Phase Banner (mini — full stepper in TopBar) ---- */
+.phase-banner-mini {
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%); z-index: 5;
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(10, 10, 26, 0.75); backdrop-filter: blur(6px);
+  padding: 4px 14px; border-radius: 20px;
+  border: 1px solid var(--border); font-size: 0.78rem;
+  font-family: var(--font-heading); pointer-events: none;
+}
+.pbm-round {
+  color: var(--gold-primary); font-weight: 700;
+}
+.pbm-phase {
+  color: var(--cyan-light); font-weight: 600;
+}
+
+/* ---- Game Board ---- */
+.game-board {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  aspect-ratio: 800 / 815;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  border: 2px solid var(--border);
+}
+.game-board-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.85);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ---- Location Zone (overlay on board) ---- */
+.location-zone {
+  display: flex; flex-direction: column;
+  padding: 6px 8px;
+  background: rgba(10, 10, 26, 0.55);
+  backdrop-filter: blur(4px);
+  border: 1.5px solid rgba(124, 58, 237, 0.25);
+  border-radius: var(--radius);
+  transition: all 0.25s ease;
+  cursor: pointer;
+  overflow: hidden;
+}
+.location-zone::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--loc-color, var(--purple)); opacity: 0.7;
+}
+.location-zone:hover {
+  background: rgba(10, 10, 26, 0.35);
+  border-color: var(--loc-color, var(--purple));
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.2);
+}
+/* Location-specific colors */
+.location-zone[data-loc="THEATER"]    { --loc-color: var(--loc-theater); }
+.location-zone[data-loc="DOWNTOWN"]   { --loc-color: var(--loc-downtown); }
+.location-zone[data-loc="MARKET_ROW"] { --loc-color: var(--loc-market); }
+.location-zone[data-loc="WORKSHOP"]   { --loc-color: var(--loc-workshop); }
+.location-zone[data-loc="DARK_ALLEY"] { --loc-color: var(--loc-darkalley); }
+
+.lz-header {
+  display: flex; align-items: center; gap: 4px; margin-bottom: 4px;
+}
+.lz-name {
+  font-size: 0.75rem; font-weight: 700;
+  font-family: var(--font-heading);
+  color: var(--loc-color, var(--purple-light));
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+.lz-count {
+  font-size: 0.65rem; color: var(--text-dim);
+  margin-left: auto; font-family: var(--font-heading);
+}
+.lz-slots {
+  display: flex; flex-wrap: wrap; gap: 3px;
+}
+
+/* ---- Worker Token (physical piece look) ---- */
+.worker-token {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 0.55rem;
+}
+.worker-token.occupied {
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15), transparent 60%),
+              var(--bg-dark);
+  border: 2px solid var(--token-color, var(--purple));
+}
+.worker-token.empty {
+  border: 1.5px dashed var(--border);
+  background: rgba(10, 10, 26, 0.4);
+}
+.worker-token-name {
+  font-size: 0.45rem; font-weight: 700;
+  line-height: 1; margin-top: -1px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+.worker-token-ap {
+  font-size: 0.6rem; color: var(--text-dim);
+  font-weight: 700; font-family: var(--font-heading);
+}
+.worker-token-ap.positive { color: var(--green); }
+
+/* ---- Board Fame Track (overlay at bottom of board) ---- */
+.board-fame-track {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 32px;
+  background: linear-gradient(to top, rgba(10,10,26,0.85), rgba(10,10,26,0.4));
+  display: flex; align-items: center;
+  padding: 0 8px;
+}
+.bft-token {
+  position: absolute; bottom: 4px;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center;
+  transition: left 0.5s ease;
+}
+.bft-img {
+  width: 22px; height: 22px;
+  border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--player-color, var(--purple));
+  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+.bft-fame {
+  font-size: 0.55rem; font-weight: 900;
+  color: var(--gold-primary); font-family: var(--font-heading);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  line-height: 1;
+}
+
+/* ---- Phase Banner (legacy) ---- */
 .phase-banner {
   text-align: center; padding: 14px 20px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(6, 182, 212, 0.06));
+  background: var(--bg-card);
   border-radius: var(--radius-lg); margin-bottom: 16px;
   border: 1px solid var(--border); position: relative; overflow: hidden;
-  box-shadow: 0 0 12px rgba(124, 58, 237, 0.08);
-}
-.phase-banner::before {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 0%, rgba(192, 132, 252, 0.06) 0%, transparent 50%);
-  pointer-events: none;
 }
 .phase-banner h2 { margin-bottom: 4px; font-family: var(--font-heading); position: relative; }
 .phase-banner p { color: var(--text-dim); font-size: 0.85rem; position: relative; }
@@ -32,12 +164,12 @@
 .location-card.has-bg:hover { background-color: rgba(10, 10, 26, 0.65); }
 .location-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, var(--loc-color, var(--purple)), transparent);
-  opacity: 0.8;
+  background: var(--loc-color, var(--purple));
+  opacity: 0.6;
 }
 .location-card:hover {
-  border-color: var(--loc-color, var(--purple)); transform: translateY(-2px);
-  box-shadow: 0 0 16px rgba(124, 58, 237, 0.2), 0 4px 16px rgba(0, 0, 0, 0.3);
+  border-color: var(--loc-color, var(--purple)); transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 .location-card.selected { border-color: var(--loc-color, var(--purple-light)); }
 .location-card.disabled { opacity: 0.5; pointer-events: none; }
@@ -61,15 +193,21 @@
   font-size: 0.9rem; font-family: var(--font-body); transition: all 0.2s ease; margin-bottom: 6px;
 }
 .action-btn:hover {
-  border-color: var(--purple); background: rgba(124, 58, 237, 0.1);
-  color: var(--purple-light); box-shadow: 0 0 10px var(--purple-glow);
+  border-color: var(--purple); background: rgba(124, 58, 237, 0.08);
+  color: var(--purple-light);
   transform: translateX(2px);
+}
+.action-btn:active {
+  transform: scale(0.96) translateX(0);
+  background: rgba(124, 58, 237, 0.18);
+  border-color: var(--purple-light);
+  transition-duration: 0.05s;
 }
 .action-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
 .action-btn .ap-cost {
-  background: linear-gradient(135deg, var(--purple), #6d28d9); color: #fff;
+  background: var(--purple); color: #fff;
   padding: 3px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 700; font-family: var(--font-heading);
-  box-shadow: 0 0 6px var(--purple-glow); white-space: nowrap;
+  white-space: nowrap;
 }
 
 /* ---- Player Board Header ---- */
@@ -94,11 +232,7 @@
   text-align: center; border: 1px solid var(--border); transition: all 0.2s;
   position: relative; overflow: hidden;
 }
-.stat-box::before {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 0%, var(--stat-glow, rgba(124, 58, 237, 0.04)) 0%, transparent 60%);
-  pointer-events: none;
-}
+.stat-box::before { display: none; }
 .stat-box .value { font-size: 1.8rem; font-weight: 900; color: var(--purple-light); font-family: var(--font-heading); line-height: 1; }
 .stat-box .label {
   font-size: 0.78rem; color: var(--text-dim); font-weight: 600;
@@ -121,9 +255,8 @@
 .character-item:hover { border-color: var(--border-light); background: var(--bg-card-hover); }
 .character-item .char-icon { font-size: 1.2rem; margin-right: 6px; }
 .character-item .char-ap {
-  background: linear-gradient(135deg, var(--purple), #6d28d9); color: #fff;
+  background: var(--purple); color: #fff;
   padding: 3px 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 700; font-family: var(--font-heading);
-  box-shadow: 0 0 8px var(--purple-glow);
 }
 .character-item.assigned { border-left: 3px solid var(--green); background: rgba(34, 197, 94, 0.04); }
 
@@ -149,7 +282,7 @@
   width: 12px; height: 12px; border-radius: 50%;
   border: 1px solid var(--purple); background: var(--bg-secondary); transition: all 0.2s;
 }
-.trick-marker.filled { background: var(--purple-light); box-shadow: 0 0 4px var(--purple-glow); }
+.trick-marker.filled { background: var(--purple-light); }
 .trick-item .trick-yields { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
 
 /* ---- Components ---- */
@@ -174,7 +307,8 @@
   font-size: 1rem; font-weight: 900; cursor: pointer; transition: all 0.2s; color: var(--text);
   font-family: var(--font-heading);
 }
-.die:hover:not(.used) { border-color: var(--purple); box-shadow: 0 0 10px var(--purple-glow); transform: scale(1.08); }
+.die:hover:not(.used) { border-color: var(--purple); transform: scale(1.05); }
+.die:active:not(.used) { transform: scale(0.92); background: rgba(124, 58, 237, 0.15); transition-duration: 0.05s; }
 .die.used { opacity: 0.2; border-style: dashed; cursor: default; }
 .die.selected { border-color: var(--purple-light); box-shadow: 0 0 12px var(--purple-glow); background: rgba(124, 58, 237, 0.1); }
 
@@ -189,14 +323,14 @@
 }
 .perf-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--cyan), var(--purple), var(--cyan));
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0; opacity: 0.6;
+  background: var(--cyan);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0; opacity: 0.5;
 }
 .perf-card:hover {
-  border-color: var(--cyan); transform: translateY(-2px);
-  box-shadow: 0 0 12px var(--cyan-glow), 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-color: var(--cyan); transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
-.perf-card.selected { border-color: var(--cyan-light); box-shadow: 0 0 16px var(--cyan-glow); }
+.perf-card.selected { border-color: var(--cyan-light); }
 .perf-card-title { text-align: center; font-size: 0.95rem; font-weight: 700; color: var(--cyan-light); margin-bottom: 8px; font-family: var(--font-heading); }
 .perf-card-bonus { text-align: center; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px; }
 .perf-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -208,12 +342,13 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 1.6rem; cursor: pointer; transition: all 0.2s; position: relative;
 }
-.trick-slot:hover:not(.occupied) { border-color: var(--purple); border-style: solid; box-shadow: inset 0 0 10px rgba(124, 58, 237, 0.15); transform: scale(1.05); }
+.trick-slot:hover:not(.occupied) { border-color: var(--purple); border-style: solid; transform: scale(1.03); }
+.trick-slot:active:not(.occupied) { transform: scale(0.95); background: rgba(124, 58, 237, 0.12); transition-duration: 0.05s; }
 .trick-slot.occupied { border-style: solid; background: rgba(124, 58, 237, 0.08); }
 .trick-slot .link-indicator {
   position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; border-radius: 50%;
   background: var(--purple-light); font-size: 0.65rem; color: #000; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; box-shadow: 0 0 6px var(--purple-glow);
+  display: flex; align-items: center; justify-content: center;
 }
 .trick-slot .shard-indicator { position: absolute; bottom: 2px; right: 2px; font-size: 0.65rem; color: var(--cyan-light); font-weight: 700; }
 .trick-slot-info { font-size: 0.65rem; color: var(--text-dim); text-align: center; letter-spacing: 0.3px; }
@@ -232,7 +367,8 @@
   padding: 8px; margin: 4px 0; font-size: 0.8rem; cursor: pointer; min-height: 40px;
   display: flex; align-items: center; justify-content: center; transition: all 0.2s; color: var(--text-dim);
 }
-.weekday-slot:hover { border-color: var(--loc-theater); box-shadow: 0 0 8px rgba(251, 191, 36, 0.15); transform: scale(1.03); }
+.weekday-slot:hover { border-color: var(--loc-theater); transform: scale(1.02); }
+.weekday-slot:active { transform: scale(0.95); background: rgba(251, 191, 36, 0.1); transition-duration: 0.05s; }
 .weekday-slot.performance-slot { border-color: var(--loc-theater); background: rgba(251, 191, 36, 0.06); }
 .weekday-slot.occupied { border-color: var(--green); color: var(--text); cursor: default; }
 
@@ -243,17 +379,18 @@
   background: var(--bg-secondary); border: 1px solid var(--border);
   border-radius: var(--radius); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
 }
-.market-item:hover { border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
-.market-item.selected { border-color: var(--cyan-light); background: rgba(6, 182, 212, 0.08); }
+.market-item:hover { border-color: var(--cyan); }
+.market-item:active { transform: scale(0.95); background: rgba(6, 182, 212, 0.12); transition-duration: 0.05s; }
+.market-item.selected { border-color: var(--cyan-light); background: rgba(6, 182, 212, 0.06); }
 .market-item .price { color: var(--gold-primary); font-weight: 700; font-family: var(--font-heading); }
 
 /* ---- Turn Indicator ---- */
 .turn-indicator {
-  background: linear-gradient(135deg, var(--purple), #6d28d9); color: #fff;
+  color: #fff;
   padding: 8px 16px; border-radius: var(--radius); font-weight: 700; font-size: 0.95rem;
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 12px; font-family: var(--font-heading);
-  box-shadow: 0 0 12px var(--purple-glow), 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   letter-spacing: 0.5px;
 }
 
@@ -265,7 +402,7 @@
 .assignment-panel {
   background: var(--bg-panel); border: 1px solid var(--border-light);
   border-radius: var(--radius-lg); padding: 24px; max-width: 700px; width: 90%;
-  box-shadow: 0 0 30px var(--purple-glow), 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 .assignment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
 
@@ -287,8 +424,10 @@
   font-size: 1rem; transition: all 0.2s; position: relative; cursor: pointer;
 }
 .worker-slot:hover:not(.occupied):not(.locked) {
-  border-color: var(--loc-color, var(--purple)); transform: scale(1.08);
-  box-shadow: 0 0 12px rgba(124, 58, 237, 0.15);
+  border-color: var(--loc-color, var(--purple)); transform: scale(1.05);
+}
+.worker-slot:active:not(.occupied):not(.locked) {
+  transform: scale(0.92); background: rgba(124, 58, 237, 0.12); transition-duration: 0.05s;
 }
 .worker-slot .ws-ap {
   font-size: 0.7rem; color: var(--text-dim); font-weight: 700;

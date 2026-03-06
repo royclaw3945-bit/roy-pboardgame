@@ -13,41 +13,25 @@ export function GameLayout() {
       className="game-layout-wrapper"
       style={{
         minHeight: '100vh',
-        backgroundImage: 'url(/img/bg_magoria.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        background: 'var(--bg-darkest)',
       }}
     >
-      {/* Dark overlay */}
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(10, 10, 26, 0.82)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <TopBar />
-        <div className="game-layout">
-          <aside className="left-panel">
-            <PlayerBoard />
-          </aside>
-          <main className="center-panel">
-            <BoardCenter />
-          </main>
-          <aside className="right-panel">
-            <div className="action-panel">
-              <ActionPanel />
-            </div>
-            <div className="log-panel">
-              <GameLog />
-            </div>
-          </aside>
-        </div>
+      <TopBar />
+      <div className="game-layout">
+        <aside className="left-panel">
+          <PlayerBoard />
+        </aside>
+        <main className="center-panel">
+          <BoardCenter />
+        </main>
+        <aside className="right-panel">
+          <div className="action-panel">
+            <ActionPanel />
+          </div>
+          <div className="log-panel">
+            <GameLog />
+          </div>
+        </aside>
       </div>
 
       <ModalRouter />
