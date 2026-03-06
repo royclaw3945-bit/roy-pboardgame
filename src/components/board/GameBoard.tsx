@@ -16,8 +16,8 @@ export function GameBoard() {
   return (
     <div className="game-board">
       <img
-        src="/img/bg_magoria.jpg"
-        alt="Magoria"
+        src="/img/board_main.jpg"
+        alt="Trickerion Board"
         className="game-board-img"
         draggable={false}
       />

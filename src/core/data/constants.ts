@@ -178,11 +178,11 @@ export const MAX_ACTIVE_PERF_CARDS = 5;
 export const LOCATION_BOARD_POSITIONS: Readonly<Record<Location, {
   readonly top: number; readonly left: number; readonly width: number; readonly height: number;
 }>> = {
-  DOWNTOWN:   { top: 2,  left: 30, width: 45, height: 20 },
-  THEATER:    { top: 28, left: 0,  width: 35, height: 28 },
-  MARKET_ROW: { top: 68, left: 0,  width: 40, height: 22 },
-  WORKSHOP:   { top: 75, left: 45, width: 40, height: 25 },
-  DARK_ALLEY: { top: 48, left: 55, width: 40, height: 22 },
+  DOWNTOWN:   { top: 1,  left: 8,  width: 52, height: 42 },
+  THEATER:    { top: 1,  left: 62, width: 36, height: 55 },
+  MARKET_ROW: { top: 48, left: 1,  width: 50, height: 22 },
+  WORKSHOP:   { top: 72, left: 15, width: 48, height: 26 },
+  DARK_ALLEY: { top: 55, left: 60, width: 38, height: 35 },
 };
 
 // -- Slot Adjacency (2x3 grid) --
