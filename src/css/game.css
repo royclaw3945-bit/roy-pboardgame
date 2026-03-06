@@ -23,18 +23,24 @@
 .game-board {
   position: relative;
   width: 100%;
-  aspect-ratio: 1015 / 894;
-  border-radius: var(--radius);
+  max-width: 1000px;
+  max-height: calc(100vh - 60px);
+  aspect-ratio: 800 / 815;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
-  border: 1px solid var(--border);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    inset 0 0 60px rgba(0, 0, 0, 0.3);
+  border: 3px solid var(--border);
+  margin: 0 auto;
+  background: var(--bg-darkest);
 }
 .game-board-img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: brightness(0.92) saturate(1.1);
+  filter: brightness(0.82) saturate(0.9);
   user-select: none;
   pointer-events: none;
 }
@@ -42,10 +48,10 @@
 /* ---- Location Zone (overlay on board) ---- */
 .location-zone {
   display: flex; flex-direction: column;
+  justify-content: flex-end;
   padding: 6px 8px;
-  background: rgba(10, 10, 26, 0.4);
-  backdrop-filter: blur(3px);
-  border: 1.5px solid rgba(124, 58, 237, 0.25);
+  background: transparent;
+  border: 1.5px solid rgba(180, 160, 120, 0.15);
   border-radius: var(--radius);
   transition: all 0.25s ease;
   cursor: pointer;
@@ -53,12 +59,13 @@
 }
 .location-zone::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: var(--loc-color, var(--purple)); opacity: 0.7;
+  background: var(--loc-color, var(--gold-primary)); opacity: 0.5;
 }
 .location-zone:hover {
-  background: rgba(10, 10, 26, 0.25);
-  border-color: var(--loc-color, var(--purple));
-  box-shadow: 0 0 12px rgba(124, 58, 237, 0.2);
+  background: rgba(15, 12, 8, 0.45);
+  backdrop-filter: blur(3px);
+  border-color: var(--loc-color, var(--gold-primary));
+  box-shadow: 0 0 16px rgba(180, 160, 120, 0.2);
 }
 /* Location-specific colors */
 .location-zone[data-loc="THEATER"]    { --loc-color: var(--loc-theater); }
@@ -68,25 +75,32 @@
 .location-zone[data-loc="DARK_ALLEY"] { --loc-color: var(--loc-darkalley); }
 
 .lz-header {
-  display: flex; align-items: center; gap: 4px; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 5px; margin-bottom: 4px;
+  padding: 3px 6px;
+  background: rgba(10, 8, 5, 0.7);
+  border-radius: 4px;
 }
 .lz-name {
-  font-size: 0.75rem; font-weight: 700;
+  font-size: 0.78rem; font-weight: 700;
   font-family: var(--font-heading);
-  color: var(--loc-color, var(--purple-light));
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  color: var(--loc-color, var(--gold-primary));
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  letter-spacing: 0.5px;
 }
 .lz-count {
-  font-size: 0.65rem; color: var(--text-dim);
+  font-size: 0.68rem; color: rgba(200, 180, 140, 0.7);
   margin-left: auto; font-family: var(--font-heading);
 }
 .lz-slots {
-  display: flex; flex-wrap: wrap; gap: 3px;
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 3px 4px;
+  background: rgba(10, 8, 5, 0.5);
+  border-radius: 4px;
 }
 
 /* ---- Worker Token (physical piece look) ---- */
 .worker-token {
-  width: 28px; height: 28px;
+  width: 32px; height: 32px;
   border-radius: 50%;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -94,21 +108,29 @@
   font-size: 0.55rem;
 }
 .worker-token.occupied {
-  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15), transparent 60%),
-              var(--bg-dark);
-  border: 2px solid var(--token-color, var(--purple));
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2), transparent 60%),
+              rgba(20, 18, 14, 0.9);
+  border: 2.5px solid var(--token-color, var(--purple));
+  box-shadow:
+    inset 0 -3px 5px rgba(0,0,0,0.5),
+    0 2px 6px rgba(0,0,0,0.4),
+    0 0 8px color-mix(in srgb, var(--token-color, var(--purple)) 30%, transparent);
 }
 .worker-token.empty {
-  border: 1.5px dashed var(--border);
-  background: rgba(10, 10, 26, 0.4);
+  border: 1.5px dashed rgba(180, 160, 120, 0.35);
+  background: rgba(15, 12, 8, 0.5);
+}
+.worker-token.empty:hover {
+  border-color: rgba(180, 160, 120, 0.6);
+  background: rgba(15, 12, 8, 0.3);
 }
 .worker-token-name {
-  font-size: 0.45rem; font-weight: 700;
+  font-size: 0.5rem; font-weight: 700;
   line-height: 1; margin-top: -1px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
 }
 .worker-token-ap {
-  font-size: 0.6rem; color: var(--text-dim);
+  font-size: 0.65rem; color: rgba(180, 160, 120, 0.6);
   font-weight: 700; font-family: var(--font-heading);
 }
 .worker-token-ap.positive { color: var(--green); }
@@ -116,8 +138,9 @@
 /* ---- Board Fame Track (overlay at bottom of board) ---- */
 .board-fame-track {
   position: absolute; bottom: 0; left: 0; right: 0;
-  height: 32px;
-  background: linear-gradient(to top, rgba(10,10,26,0.85), rgba(10,10,26,0.4));
+  height: 36px;
+  background: linear-gradient(to top, rgba(15, 12, 8, 0.92), rgba(15, 12, 8, 0.5));
+  border-top: 1px solid rgba(180, 160, 120, 0.3);
   display: flex; align-items: center;
   padding: 0 8px;
 }
