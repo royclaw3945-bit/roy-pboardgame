@@ -9,7 +9,7 @@ export function BoardCenter() {
   if (!state) return null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
       <GameBoard />
       <TheaterSection />
     </div>
