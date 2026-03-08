@@ -6,6 +6,7 @@ import { PlayerBoard } from '../player/PlayerBoard';
 import { ActionPanel } from '../actions/ActionPanel';
 import { GameLog } from '../actions/GameLog';
 import { ModalRouter } from '../modals/ModalRouter';
+import { LocationPopover } from '../board/LocationPopover';
 
 export function GameLayout() {
   return (
@@ -35,6 +36,7 @@ export function GameLayout() {
       </div>
 
       <ModalRouter />
+      <LocationPopover />
     </div>
   );
 }
