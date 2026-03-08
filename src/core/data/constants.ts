@@ -174,15 +174,15 @@ export const PERFORMER_LINK_BONUS = 1; // fixed 1 fame per link during performan
 // -- Performance Card Config --
 export const MAX_ACTIVE_PERF_CARDS = 5;
 
-// -- Board Position (% based for overlay on board_main.jpg full setup) --
+// -- Board Position (% based for overlay on board_main.jpg TTS texture) --
 export const LOCATION_BOARD_POSITIONS: Readonly<Record<Location, {
   readonly top: number; readonly left: number; readonly width: number; readonly height: number;
 }>> = {
-  DOWNTOWN:   { top: 12, left: 6,  width: 30, height: 30 },
-  THEATER:    { top: 3,  left: 36, width: 26, height: 52 },
-  MARKET_ROW: { top: 48, left: 6,  width: 28, height: 17 },
-  WORKSHOP:   { top: 66, left: 6,  width: 28, height: 18 },
-  DARK_ALLEY: { top: 57, left: 34, width: 24, height: 33 },
+  DOWNTOWN:   { top: 1,  left: 4,  width: 26, height: 33 },
+  THEATER:    { top: 0,  left: 31, width: 40, height: 52 },
+  MARKET_ROW: { top: 36, left: 4,  width: 26, height: 22 },
+  WORKSHOP:   { top: 60, left: 4,  width: 26, height: 38 },
+  DARK_ALLEY: { top: 54, left: 31, width: 38, height: 44 },
 };
 
 // -- Slot Adjacency (2x3 grid) --

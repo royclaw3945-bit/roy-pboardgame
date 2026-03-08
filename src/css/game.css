@@ -24,7 +24,7 @@
   position: relative;
   width: 100%;
   max-height: calc(100vh - 68px);
-  aspect-ratio: 1187 / 897;
+  aspect-ratio: 3007 / 2102;
   margin: 0 auto;
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -39,7 +39,7 @@
   width: 100%;
   height: 100%;
   object-fit: fill;
-  filter: brightness(0.85) saturate(0.95);
+  filter: brightness(0.9) saturate(1.0);
   user-select: none;
   pointer-events: none;
 }
