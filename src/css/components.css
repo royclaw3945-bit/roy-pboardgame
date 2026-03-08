@@ -26,10 +26,15 @@
   background: var(--bg-card-hover);
   border-color: var(--purple);
   color: var(--purple-light);
-  box-shadow: 0 0 12px var(--purple-glow), 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+.btn:active {
+  transform: scale(0.93);
+  background: rgba(124, 58, 237, 0.15);
+  border-color: var(--purple-light);
+  transition-duration: 0.05s;
+}
+.btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; transform: none; }
 .btn-primary {
   background: linear-gradient(135deg, var(--purple), #6d28d9);
   background-size: 200% 100%;
@@ -40,7 +45,12 @@
 .btn-primary:hover {
   background-position: 100% 0;
   color: #fff;
-  box-shadow: 0 0 20px var(--purple-glow), 0 0 8px var(--purple-glow);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+.btn-primary:active {
+  transform: scale(0.93);
+  filter: brightness(1.2);
+  transition-duration: 0.05s;
 }
 .btn-primary .btn-icon { color: #fff; }
 .btn-danger { border-color: rgba(239, 68, 68, 0.4); color: var(--red); }
@@ -48,37 +58,19 @@
   background: rgba(239, 68, 68, 0.15);
   color: #fff;
   border-color: var(--red);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+.btn-danger:active {
+  transform: scale(0.93);
+  background: rgba(239, 68, 68, 0.25);
+  transition-duration: 0.05s;
 }
 .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
 .btn-lg { padding: 12px 28px; font-size: 1.05rem; letter-spacing: 0.3px; }
 .btn-icon-only { padding: 6px 10px; }
 .btn-icon-only .btn-icon { width: 18px; height: 18px; }
-/* Steam button effect (compat class, restyled) */
-.btn-steam::after {
-  content: '';
-  position: absolute;
-  top: -50%; left: -50%;
-  width: 200%; height: 200%;
-  background: radial-gradient(circle, rgba(192, 132, 252, 0.1) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.btn-steam:hover::after { opacity: 1; }
+/* Steam button effect removed — too flashy */
 
-/* ---- Rivet Borders (compat, restyled) ---- */
-.rivet-border { position: relative; }
-.rivet-border::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  background:
-    radial-gradient(circle 3px at 8px 0, var(--purple) 2px, transparent 2.5px) repeat-x top,
-    radial-gradient(circle 3px at 8px 0, var(--purple) 2px, transparent 2.5px) repeat-x bottom;
-  background-size: 16px 4px;
-  pointer-events: none;
-  opacity: 0.25;
-}
+/* ---- Rivet Borders (removed — too decorative) ---- */
 
 /* ---- Modals ---- */
 .modal-overlay {
@@ -107,16 +99,9 @@
   transform: translateY(20px) scale(0.98);
   transition: transform 0.3s ease;
   position: relative;
-  box-shadow: 0 0 30px var(--purple-glow), 0 0 60px rgba(124, 58, 237, 0.1), 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
-.modal::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 0%, rgba(192, 132, 252, 0.04) 0%, transparent 50%);
-  pointer-events: none;
-  border-radius: var(--radius-lg);
-}
+.modal::before { display: none; }
 .modal-overlay.active .modal { transform: translateY(0) scale(1); }
 .modal h2 { margin-bottom: 16px; font-family: var(--font-heading); position: relative; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
@@ -138,13 +123,16 @@
 }
 .trick-select-item:hover {
   border-color: var(--purple);
-  box-shadow: 0 0 10px var(--purple-glow);
   transform: translateX(3px);
+}
+.trick-select-item:active {
+  transform: scale(0.97) translateX(0);
+  background: rgba(124, 58, 237, 0.15);
+  transition-duration: 0.05s;
 }
 .trick-select-item.selected {
   border-color: var(--purple-light);
-  background: rgba(124, 58, 237, 0.1);
-  box-shadow: 0 0 16px var(--purple-glow);
+  background: rgba(124, 58, 237, 0.08);
 }
 .trick-select-item.disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 .trick-select-item .name { font-weight: 700; font-size: 0.95rem; font-family: var(--font-heading); color: var(--text-bright); }
@@ -166,11 +154,11 @@
   transition: all 0.2s;
   font-size: 0.9rem;
 }
-.comp-option:hover { border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
+.comp-option:hover { border-color: var(--cyan); }
+.comp-option:active { transform: scale(0.95); background: rgba(6, 182, 212, 0.12); transition-duration: 0.05s; }
 .comp-option.selected {
   border-color: var(--cyan-light);
-  background: rgba(6, 182, 212, 0.1);
-  box-shadow: 0 0 12px var(--cyan-glow);
+  background: rgba(6, 182, 212, 0.08);
 }
 
 /* ---- Notifications ---- */
@@ -214,7 +202,7 @@
   z-index: 500;
   pointer-events: none;
   white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 8px var(--purple-glow);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   color: var(--text);
 }
 

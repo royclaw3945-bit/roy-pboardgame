@@ -52,7 +52,7 @@ export function PlayerBoard() {
           <img
             src={mag.img} alt={mag.nameKo}
             className="magician-portrait"
-            style={{ width: 52, height: 52, border: `3px solid ${player.color}`, boxShadow: `0 0 12px ${player.color}40` }}
+            style={{ width: 52, height: 52, border: `3px solid ${player.color}` }}
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
           <div>

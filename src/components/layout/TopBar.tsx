@@ -79,13 +79,13 @@ export function TopBar() {
                     fontWeight: 700,
                     fontFamily: 'var(--font-heading)',
                     background: isActive
-                      ? 'linear-gradient(135deg, var(--purple), var(--cyan))'
+                      ? 'var(--purple)'
                       : isPast
-                      ? 'rgba(124, 58, 237, 0.25)'
+                      ? 'rgba(124, 58, 237, 0.2)'
                       : 'var(--bg-card)',
-                    border: `2px solid ${isActive ? 'var(--cyan-light)' : isPast ? 'var(--purple)' : 'var(--border)'}`,
+                    border: `2px solid ${isActive ? 'var(--purple-light)' : isPast ? 'var(--purple)' : 'var(--border)'}`,
                     color: isActive ? '#fff' : isPast ? 'var(--purple-light)' : 'var(--text-dim)',
-                    boxShadow: isActive ? '0 0 12px var(--purple-glow), 0 0 6px var(--cyan-glow)' : 'none',
+                    boxShadow: 'none',
                     transition: 'all 0.3s ease',
                   }}
                   title={PHASE_CONFIG[p].nameKo}
