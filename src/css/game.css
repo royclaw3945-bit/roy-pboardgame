@@ -23,16 +23,13 @@
 .game-board {
   position: relative;
   width: 100%;
-  max-width: 1000px;
-  max-height: calc(100vh - 60px);
-  aspect-ratio: 800 / 815;
+  height: calc(100vh - 68px);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.6),
     inset 0 0 60px rgba(0, 0, 0, 0.3);
   border: 3px solid var(--border);
-  margin: 0 auto;
   background: var(--bg-darkest);
 }
 .game-board-img {
