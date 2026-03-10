@@ -36,8 +36,33 @@ serch/
 _backup/
 참고자료/
 
-# Screenshots
-*.png
+# Screenshots (root only)
+/*.png
+/board_zones_*.png
+
+# Sprite sheet originals (individual crops are committed)
+public/img/cards/tricks/tricks_front.jpg
+public/img/cards/tricks/tricks_back.jpg
+public/img/cards/performance/perf_front.jpg
+public/img/cards/performance/perf_back.jpg
+public/img/cards/assignment/permanent_front.jpg
+public/img/cards/assignment/permanent_back.jpg
+public/img/cards/assignment/assign_deck45_front.jpg
+public/img/cards/assignment/special_deck49_front.png
+public/img/cards/assignment/special_deck49_front.jpg
+public/img/cards/assignment/special_back.jpg
+public/img/cards/assignment/special_front.jpg
+public/img/cards/magicians/magician_ability.jpg
+public/img/cards/magicians/magician_portrait.jpg
+public/img/cards/magicians/magician_back.jpg
+public/img/cards/secrets/secrets_front.jpg
+public/img/cards/classroom/*_front.jpg
+public/img/cards/practice/*_front.jpg
+public/img/cards/prophecy/prophecy_front.jpg
+public/img/cards/prophecy/prophecy_back.jpg
+public/img/cards/backs/tricks_back.jpg
+public/img/cards/backs/perf_back.jpg
+public/img/cards/backs/permanent_back.jpg
 
 # Playwright MCP logs
 .playwright-mcp/
